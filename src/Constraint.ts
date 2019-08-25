@@ -13,7 +13,8 @@ export class ArrayConstraint<T> implements Constraint {
   constructor(readonly childType: T) { }
 }
 
-export class UnionConstraint<T1, T2> implements Constraint {
+export class UnionConstraint<TS extends readonly unknown[]> implements Constraint {
   readonly constraintName = 'union';
-  constructor(readonly type1: T1, readonly type2: T2) { }
+  readonly types: TS;
+  constructor(...types: TS) { this.types = types; }
 }

@@ -3,6 +3,7 @@
     "sourceMap": true,
     "strict": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "target": "es5"
   }
 }

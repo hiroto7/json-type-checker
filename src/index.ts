@@ -11,8 +11,8 @@ type JSONType<Constraint> =
   Constraint extends AnyNumber ? number :
   Constraint extends AnyString ? string :
   Constraint extends AnyBoolean ? boolean :
-  Constraint extends ArrayConstraint<infer T> ? { 0: JSONType<T>[] }[Constraint extends Constraint ? 0 : never] :
-  Constraint extends UnionConstraint<infer T1, infer T2> ? { 0: JSONType<T1> | JSONType<T2> }[Constraint extends Constraint ? 0 : never] :
+  Constraint extends ArrayConstraint<infer C> ? { 0: JSONType<C>[] }[Constraint extends Constraint ? 0 : never] :
+  Constraint extends UnionConstraint<readonly (infer CS)[]> ? { 0: JSONType<CS> }[Constraint extends Constraint ? 0 : never] :
   Constraint extends object ? { [P in keyof Constraint]: JSONType<Constraint[P]> } :
   Constraint;
 

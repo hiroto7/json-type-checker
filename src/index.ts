@@ -1,4 +1,4 @@
-import { AnyBoolean, AnyNumber, AnyString, ArrayConstraint, UnionConstraint } from "./Constraint";
+import { AnyBoolean, AnyNumber, AnyString, ArrayConstraint, Union } from "./Constraint";
 
 export class JSONTypeError implements Error {
   name: string = 'JSONTypeError';
@@ -12,7 +12,7 @@ type JSONType<Constraint> =
   Constraint extends AnyString ? string :
   Constraint extends AnyBoolean ? boolean :
   Constraint extends ArrayConstraint<infer C> ? { 0: JSONType<C>[] }[Constraint extends Constraint ? 0 : never] :
-  Constraint extends UnionConstraint<readonly (infer CS)[]> ? { 0: JSONType<CS> }[Constraint extends Constraint ? 0 : never] :
+  Constraint extends Union<readonly (infer CS)[]> ? { 0: JSONType<CS> }[Constraint extends Constraint ? 0 : never] :
   Constraint extends object ? { [P in keyof Constraint]: JSONType<Constraint[P]> } :
   Constraint;
 
@@ -61,5 +61,5 @@ const wrap = <Constraint extends object>(json: JSONType<Constraint>, constraint:
   })
 };
 
-export { anyBoolean, anyNumber, anyString, ArrayConstraint, UnionConstraint } from "./Constraint";
+export { anyBoolean, anyNumber, anyString, arrayConstraint, union } from "./Constraint";
 export default wrap;

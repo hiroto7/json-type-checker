@@ -1,4 +1,4 @@
-import wrap, { anyBoolean, anyNumber, anyString, JSONTypeError } from ".";
+import wrap, { anyBoolean, anyNumber, anyString, JSONTypeError } from "./index";
 
 describe('wrap()', () => {
 
@@ -29,37 +29,45 @@ describe('wrap()', () => {
       ${'string'}    | ${anyString}  | ${false}
       ${'string'}    | ${anyString}  | ${null}
       ${'string'}    | ${anyString}  | ${undefined}
+      ${'string'}    | ${anyString}  | ${{}}
       ${'fuga'}      | ${'fuga'}     | ${'hoge'}
       ${'fuga'}      | ${'fuga'}     | ${1}
       ${'fuga'}      | ${'fuga'}     | ${false}
       ${'fuga'}      | ${'fuga'}     | ${null}
       ${'fuga'}      | ${'fuga'}     | ${undefined}
+      ${'fuga'}      | ${'fuga'}     | ${{}}
       ${'number'}    | ${anyNumber}  | ${'hoge'}
       ${'number'}    | ${anyNumber}  | ${false}
       ${'number'}    | ${anyNumber}  | ${null}
       ${'number'}    | ${anyNumber}  | ${undefined}
+      ${'number'}    | ${anyNumber}  | ${{}}
       ${'2'}         | ${2}          | ${'hoge'}
       ${'2'}         | ${2}          | ${1}
       ${'2'}         | ${2}          | ${false}
       ${'2'}         | ${2}          | ${null}
       ${'2'}         | ${2}          | ${undefined}
+      ${'2'}         | ${2}          | ${{}}
       ${'boolean'}   | ${anyBoolean} | ${'hoge'}
       ${'boolean'}   | ${anyBoolean} | ${1}
       ${'boolean'}   | ${anyBoolean} | ${null}
       ${'boolean'}   | ${anyBoolean} | ${undefined}
+      ${'boolean'}   | ${anyBoolean} | ${{}}
       ${'true'}      | ${true}       | ${'hoge'}
       ${'true'}      | ${true}       | ${1}
       ${'true'}      | ${true}       | ${false}
       ${'true'}      | ${true}       | ${null}
       ${'true'}      | ${true}       | ${undefined}
+      ${'true'}      | ${true}       | ${{}}
       ${'null'}      | ${null}       | ${'hoge'}
       ${'null'}      | ${null}       | ${1}
       ${'null'}      | ${null}       | ${false}
       ${'null'}      | ${null}       | ${undefined}
+      ${'null'}      | ${null}       | ${{}}
       ${'undefined'} | ${undefined}  | ${'hoge'}
       ${'undefined'} | ${undefined}  | ${1}
       ${'undefined'} | ${undefined}  | ${false}
       ${'undefined'} | ${undefined}  | ${null}
+      ${'undefined'} | ${undefined}  | ${{}}
   `(`型 '$typeName' が期待されているとき、値が '$value' であれば JSONTypeError を投げる`, ({ constraint, value }) => {
       const wrapped = wrap({ a: value } as any, { a: constraint });
       expect(() => { wrapped.a }).toThrow(JSONTypeError);
@@ -125,6 +133,6 @@ describe('wrap()', () => {
       })
     });
 
-  })
+  });
 
 });

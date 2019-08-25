@@ -1,4 +1,4 @@
-import { AnyNumber, AnyString, ArrayConstraint, UnionConstraint, AnyBoolean } from "./Constraint";
+import { AnyBoolean, AnyNumber, AnyString, ArrayConstraint, UnionConstraint } from "./Constraint";
 
 type JSONType<Constraint> =
   Constraint extends AnyNumber ? number :
@@ -9,30 +9,49 @@ type JSONType<Constraint> =
   Constraint extends object ? { [P in keyof Constraint]: JSONType<Constraint[P]> } :
   Constraint;
 
-const wrap = <Constraint extends object>(json: JSONType<Constraint>, constraint: Constraint): JSONType<Constraint> => new Proxy(json, {
-  get(target, property: keyof Constraint) {
+const wrap = <Constraint extends object>(json: JSONType<Constraint>, constraint: Constraint): JSONType<Constraint> => {
+  const children: { [P in keyof Constraint]?: JSONType<Constraint[P]> } = {};
 
-    if (constraint[property] instanceof AnyNumber) {
-      if (typeof Reflect.get(target, property) !== 'number') { throw new TypeError(`(...).${property} is not a number`); }
+  return new Proxy(json, {
+    get(target, property: keyof Constraint) {
+
+      if (constraint[property] instanceof AnyNumber) {
+        if (typeof Reflect.get(target, property) !== 'number') { throw new TypeError(`(...).${property} is not a number`); }
+        return Reflect.get(target, property);
+      }
+
+      else if (constraint[property] instanceof AnyString) {
+        if (typeof Reflect.get(target, property) !== 'string') { throw new TypeError(`(...).${property} is not a string`); }
+        return Reflect.get(target, property);
+      }
+
+      else if (constraint[property] instanceof AnyBoolean) {
+        if (typeof Reflect.get(target, property) !== 'boolean') { throw new TypeError(`(...).${property} is not a boolean`); }
+        return Reflect.get(target, property);
+      }
+
+      else if (constraint[property] instanceof ArrayConstraint) { throw new Error('Not implemented'); }
+      else if (constraint[property] instanceof UnionConstraint) { throw new Error('Not implemented'); }
+
+      else if (
+        typeof constraint[property] === 'number' || typeof constraint[property] === 'string' || typeof constraint[property] === 'boolean' ||
+        constraint[property] === null || constraint[property] === undefined) {
+        if (Reflect.get(target, property) !== constraint[property]) { throw new TypeError(`(...).${property} is not value '${constraint[property]}'`); }
+        return Reflect.get(target, property);
+      }
+
+      else if (typeof constraint[property] === 'object') {
+        if (!(property in children)) {
+          children[property] = wrap(
+            Reflect.get(target, property),
+            constraint[property] as object & Constraint[keyof Constraint]);
+        }
+        return children[property];
+      }
+
     }
+  })
+};
 
-    else if (constraint[property] instanceof AnyString) {
-      if (typeof Reflect.get(target, property) !== 'string') { throw new TypeError(`(...).${property} is not a string`); }
-    }
-
-    else if (constraint[property] instanceof AnyBoolean) {
-      if (typeof Reflect.get(target, property) !== 'boolean') { throw new TypeError(`(...).${property} is not a string`); }
-    }
-
-    else if (
-      typeof constraint[property] === 'number' || typeof constraint[property] === 'string' || typeof constraint[property] === 'boolean' ||
-      constraint[property] === null || constraint[property] === undefined) {
-      if (Reflect.get(target, property) !== constraint[property]) { throw new TypeError(`(...).${property} is not value '${constraint[property]}'`); }
-    }
-
-    return Reflect.get(target, property);
-  }
-});
-
-export { anyNumber, anyString, anyBoolean, ArrayConstraint, UnionConstraint } from "./Constraint";
+export { anyBoolean, anyNumber, anyString, ArrayConstraint, UnionConstraint } from "./Constraint";
 export default wrap;

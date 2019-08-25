@@ -1,4 +1,4 @@
-import wrap, { anyNumber, anyString, anyBoolean } from ".";
+import wrap, { anyBoolean, anyNumber, anyString, JSONTypeError } from ".";
 
 describe('wrap()', () => {
 
@@ -60,9 +60,9 @@ describe('wrap()', () => {
       ${'undefined'} | ${undefined}  | ${1}
       ${'undefined'} | ${undefined}  | ${false}
       ${'undefined'} | ${undefined}  | ${null}
-  `(`型 '$typeName' が期待されているとき、値が '$value' であれば TypeError を投げる`, ({ constraint, value }) => {
+  `(`型 '$typeName' が期待されているとき、値が '$value' であれば JSONTypeError を投げる`, ({ constraint, value }) => {
       const wrapped = wrap({ a: value } as any, { a: constraint });
-      expect(() => { wrapped.a }).toThrow(TypeError);
+      expect(() => { wrapped.a }).toThrow(JSONTypeError);
     });
 
   });
@@ -76,10 +76,10 @@ describe('wrap()', () => {
         const wrapped = wrap(json, { a: { b: anyNumber } });
         expect(wrapped.a.b).toBe(1);
       });
-  
-      test('型が誤っていれば TypeError をスローする', () => {
+
+      test('型が誤っていれば JSONTypeError をスローする', () => {
         const wrapped = wrap(json as any, { a: { b: anyString } });
-        expect(() => { wrapped.a.b }).toThrow(TypeError);
+        expect(() => { wrapped.a.b }).toThrow(JSONTypeError);
       });
     });
 
@@ -90,10 +90,10 @@ describe('wrap()', () => {
         const wrapped = wrap(json, { a: { b: { c: anyNumber } } });
         expect(wrapped.a.b.c).toBe(1);
       });
-  
-      test('型が誤っていれば TypeError をスローする', () => {
+
+      test('型が誤っていれば JSONTypeError をスローする', () => {
         const wrapped = wrap(json as any, { a: { b: { c: anyString } } });
-        expect(() => { wrapped.a.b.c }).toThrow(TypeError);
+        expect(() => { wrapped.a.b.c }).toThrow(JSONTypeError);
       });
     });
 

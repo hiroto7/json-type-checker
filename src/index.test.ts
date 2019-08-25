@@ -69,6 +69,14 @@ describe('wrap()', () => {
 
   describe('オブジェクト型のアサーション', () => {
 
+    test.each(['hoge', 1, false, null, undefined] as const)(
+      `オブジェクト型が期待されているとき、値が %p であれば JSONTypeError を投げる`,
+      value => {
+        const wrapped = wrap({ a: value } as any, { a: {} });
+        expect(() => { wrapped.a }).toThrow(JSONTypeError);
+      }
+    );
+
     describe('.a.b に関して', () => {
       const json = { a: { b: 1 } } as const;
 

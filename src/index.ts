@@ -47,7 +47,8 @@ const wrap = <Constraint extends object>(json: JSONType<Constraint>, constraint:
         return Reflect.get(target, property);
       }
 
-      else if (typeof constraint[property] === 'object') {
+      else if (constraint[property] instanceof Object) {
+        if (!(Reflect.get(target, property) instanceof Object)) { throw new JSONTypeError(`(...).${property} is not a object`); }
         if (!(property in children)) {
           children[property] = wrap(
             Reflect.get(target, property),

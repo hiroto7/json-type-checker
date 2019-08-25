@@ -18,21 +18,22 @@ export const anyBoolean = new AnyBoolean;
 export class ArrayConstraint<T> implements Constraint {
   readonly constraintName = 'array';
   get typeName(): string {
-    if (this.childType instanceof Union) {
-      return `(${this.childType.typeName})[]`
+    if (this.child instanceof Union) {
+      return `(${this.child.typeName})[]`
     } else {
-      return `${getTypeName(this.childType)}[]`
+      return `${getTypeName(this.child)}[]`
     }
   }
-  constructor(readonly childType: T) { }
+  constructor(readonly child: T) { }
 }
 export const arrayConstraint = <T>(childType: T): ArrayConstraint<T> => new ArrayConstraint(childType);
 
 export class Union<TS extends readonly unknown[]> implements Constraint {
   readonly constraintName = 'union';
-  readonly types: TS;
-  get typeName(): string { return this.types.map(type => getTypeName(type)).join(' | ') }
-  constructor(...types: TS) { this.types = types; }
+  private readonly _children: TS;
+  get typeName(): string { return this._children.map(type => getTypeName(type)).join(' | ') }
+  constructor(...children: TS) { this._children = children; }
+  *children() { yield* this._children; }
 }
 export const union = <TS extends readonly unknown[]>(...types: TS): TS[0] | Union<TS> => {
   const map: Map<string, unknown> = new Map();

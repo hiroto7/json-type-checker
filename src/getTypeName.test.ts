@@ -62,7 +62,7 @@ describe('getTypeName()', () => {
     expect(getTypeName({})).toBe('{}')
   })
 
-  test('{ a: number; b: true | string; }', () => {
+  test('{ "a": number; "b": true | string; }', () => {
     expect(getTypeName({ a: anyNumber, b: union(true, anyString) })).toBe('{ "a": number; "b": true | string; }')
   })
 });

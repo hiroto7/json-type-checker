@@ -1,4 +1,6 @@
 import { AnyBoolean, AnyNumber, AnyString, ArrayConstraint, Union } from "./Constraint";
+import prettyFormat from 'pretty-format';
+import getTypeName from "./getTypeName";
 
 export class JSONTypeError implements Error {
   name: string = 'JSONTypeError';
@@ -16,45 +18,52 @@ type JSONType<Constraint> =
   Constraint extends object ? { [P in keyof Constraint]: JSONType<Constraint[P]> } :
   Constraint;
 
+const valueIsNotType = (value: unknown, constraint: unknown): string =>
+  `${prettyFormat(value, { min: true })} is not type '${getTypeName(constraint)}'.`
+
+const check1 = (value: unknown, constraint: unknown): void => {
+  if (constraint instanceof Union) {
+    const errors: Set<string> = new Set;
+    for (const child of constraint.children()) {
+      try {
+        check1(value, child);
+      } catch (e) {
+        errors.add(e.message);
+        continue;
+      }
+      return;
+    }
+    throw new JSONTypeError([valueIsNotType(value, constraint), ...errors].join('\n'));
+  } else if (constraint instanceof AnyBoolean || constraint instanceof AnyNumber || constraint instanceof AnyString) {
+    if (typeof value !== constraint.typeName) { throw new JSONTypeError(valueIsNotType(value, constraint)); }
+  } else {
+    if (value !== constraint) { throw new JSONTypeError(valueIsNotType(value, constraint)); }
+  }
+}
+
 const wrap = <Constraint extends object>(json: JSONType<Constraint>, constraint: Constraint): JSONType<Constraint> => {
   const children: { [P in keyof Constraint]?: JSONType<Constraint[P]> } = {};
 
   return new Proxy(json, {
     get(target, property: keyof Constraint) {
 
-      if (constraint[property] instanceof AnyNumber) {
-        if (typeof Reflect.get(target, property) !== 'number') { throw new JSONTypeError(`(...).${property} is not a number`); }
-        return Reflect.get(target, property);
-      }
+      if (Reflect.get(target, property) instanceof Object) {
 
-      else if (constraint[property] instanceof AnyString) {
-        if (typeof Reflect.get(target, property) !== 'string') { throw new JSONTypeError(`(...).${property} is not a string`); }
-        return Reflect.get(target, property);
-      }
+        if (!(constraint[property] instanceof Object) || constraint[property] instanceof AnyNumber ||
+          constraint[property] instanceof AnyString || constraint[property] instanceof AnyBoolean) {
+          throw new JSONTypeError(`(...).${property} is not a object`);
+        }
 
-      else if (constraint[property] instanceof AnyBoolean) {
-        if (typeof Reflect.get(target, property) !== 'boolean') { throw new JSONTypeError(`(...).${property} is not a boolean`); }
-        return Reflect.get(target, property);
-      }
-
-      else if (constraint[property] instanceof ArrayConstraint) { throw new Error('Not implemented'); }
-      else if (constraint[property] instanceof UnionConstraint) { throw new Error('Not implemented'); }
-
-      else if (
-        typeof constraint[property] === 'number' || typeof constraint[property] === 'string' || typeof constraint[property] === 'boolean' ||
-        constraint[property] === null || constraint[property] === undefined) {
-        if (Reflect.get(target, property) !== constraint[property]) { throw new JSONTypeError(`(...).${property} is not value '${constraint[property]}'`); }
-        return Reflect.get(target, property);
-      }
-
-      else if (constraint[property] instanceof Object) {
-        if (!(Reflect.get(target, property) instanceof Object)) { throw new JSONTypeError(`(...).${property} is not a object`); }
         if (!(property in children)) {
           children[property] = wrap(
             Reflect.get(target, property),
             constraint[property] as object & Constraint[keyof Constraint]);
         }
         return children[property];
+
+      } else {
+        check1(Reflect.get(target, property), constraint[property]);
+        return Reflect.get(target, property);
       }
 
     }

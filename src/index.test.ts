@@ -1,4 +1,4 @@
-import wrap, { anyBoolean, anyNumber, anyString, JSONTypeError } from "./index";
+import wrap, { anyBoolean, anyNumber, anyString, JSONTypeError, union } from "./index";
 
 describe('wrap()', () => {
 
@@ -133,6 +133,22 @@ describe('wrap()', () => {
       })
     });
 
+  });
+
+  describe('ユニオン型のアサーション', () => {
+    describe(`型 'boolean | number' が期待されているとき`, () => {
+      const constraint = { a: union(anyBoolean, anyNumber) };
+
+      test(`値が 'true' であればその値を返す`, () => {
+        const wrapped = wrap({ a: true }, constraint);
+        expect(wrapped.a).toBe(true);
+      });
+
+      test(`値が 'hoge' であれば JSONTypeError を投げる`, () => {
+        const wrapped = wrap({ a: 'hoge' } as any, constraint);
+        expect(() => { wrapped.a }).toThrow(JSONTypeError);
+      })
+    });
   });
 
 });

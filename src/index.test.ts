@@ -105,6 +105,26 @@ describe('wrap()', () => {
       });
     });
 
+    describe('同一のオブジェクトに対し同一の Proxy を返す', () => {
+      const a = { b: 1 } as const;
+      const json = { a, c: { a } };
+      const wrapped = wrap(json, { a: { b: anyNumber }, c: { a: { b: anyNumber } } });
+
+      describe('同一のプロパティに対し同一の Proxy を返す', () => {
+        test('.a に対して', () => {
+          expect(wrapped.a).toBe(wrapped.a);
+        });
+
+        test('.c.a に対して', () => {
+          expect(wrapped.c.a).toBe(wrapped.c.a);
+        });
+      });
+
+      test.skip('異なるプロパティにセットされた同一のオブジェクトに対し同一の Proxy を返す', () => {
+        expect(wrapped.c.a).toBe(wrapped.a);
+      })
+    });
+
   })
 
 });

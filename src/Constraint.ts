@@ -38,7 +38,14 @@ export class Union<TS extends readonly unknown[]> implements Constraint {
 export const union = <TS extends readonly unknown[]>(...types: TS): TS[0] | Union<TS> => {
   const map: Map<string, unknown> = new Map();
   for (const type of types) {
-    map.set(getTypeName(type), type);
+    if (!(type instanceof NeverConstraint)) {
+      map.set(getTypeName(type), type);
+    }
   }
-  return map.size === 1 ? [...map.values()][0] : new Union(...map.values());
+  return map.size === 0 ? neverConstraint :
+    map.size === 1 ? [...map.values()][0] :
+      new Union(...map.values());
 }
+
+export class NeverConstraint implements Constraint { readonly constraintName = 'never'; readonly typeName = 'never'; }
+export const neverConstraint = new NeverConstraint;

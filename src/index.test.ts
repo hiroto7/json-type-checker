@@ -2,6 +2,22 @@ import wrap, { anyBoolean, anyNumber, anyString, JSONTypeError, union } from "./
 
 describe('wrap()', () => {
 
+  describe('制約で未定義のプロパティのアサーション', () => {
+    const constraint = { a: anyNumber };
+
+    test(`制約で未定義のプロパティを参照し、値が '1' であればその値を返す`, () => {
+      const json = { a: 1, b: 2 } as const;
+      const wrapped = wrap(json, constraint);
+      expect((wrapped as typeof json).b).toBe(2);
+    });
+
+    test(`制約で未定義のプロパティを参照し、値が '{}' であればその値を返す`, () => {
+      const json = { a: 1, b: {} } as const;
+      const wrapped = wrap(json, constraint);
+      expect((wrapped as typeof json).b).toEqual({});
+    });
+  });
+
   describe('プリミティブ型のアサーション', () => {
 
     test.each`
@@ -73,6 +89,22 @@ describe('wrap()', () => {
       expect(() => { wrapped.a }).toThrow(JSONTypeError);
     });
 
+    test.skip.each`
+      typeName       | constraint
+      ${'string'}    | ${anyString}
+      ${'fuga'}      | ${'fuga'}
+      ${'number'}    | ${anyNumber}
+      ${'2'}         | ${2}
+      ${'boolean'}   | ${anyBoolean}
+      ${'true'}      | ${true}
+      ${'false'}     | ${false}
+      ${'null'}      | ${null}
+      ${'undefined'} | ${undefined}
+    `(`型 '$typeName' が期待されているとき、プロパティが存在しなければ JSONTypeError を投げる`, ({ constraint }) => {
+      const wrapped = wrap({} as any, { a: constraint });
+      expect(() => { wrapped.a }).toThrow(JSONTypeError);
+    });
+
   });
 
   describe('オブジェクト型のアサーション', () => {
@@ -84,6 +116,11 @@ describe('wrap()', () => {
         expect(() => { wrapped.a }).toThrow(JSONTypeError);
       }
     );
+
+    test('オブジェクト型が期待されているとき、プロパティが存在しなければ JSONTypeError を投げる', () => {
+      const wrapped = wrap({ b: 2 } as any, { a: {} });
+      expect(() => { wrapped.a }).toThrow(JSONTypeError);
+    });
 
     describe('.a.b に関して', () => {
       const json = { a: { b: 1 } } as const;
@@ -128,7 +165,7 @@ describe('wrap()', () => {
         });
       });
 
-      test.skip('異なるプロパティにセットされた同一のオブジェクトに対し同一の Proxy を返す', () => {
+      test('異なるプロパティにセットされた同一のオブジェクトに対し同一の Proxy を返す', () => {
         expect(wrapped.c.a).toBe(wrapped.a);
       })
     });
@@ -144,10 +181,24 @@ describe('wrap()', () => {
         expect(wrapped.a).toBe(true);
       });
 
-      test(`値が 'hoge' であれば JSONTypeError を投げる`, () => {
+      test(`値が '"hoge"' であれば JSONTypeError を投げる`, () => {
         const wrapped = wrap({ a: 'hoge' } as any, constraint);
         expect(() => { wrapped.a }).toThrow(JSONTypeError);
       })
+    });
+
+    describe(`型 '{ a: boolean } | { a: number }' が期待されているとき`, () => {
+      const constraint = union({ a: anyBoolean }, { a: anyNumber });
+
+      test(`.a の値が 'true' であればその値を返す`, () => {
+        const wrapped = wrap({ a: true }, constraint);
+        expect(wrapped.a).toBe(true);
+      });
+
+      test(`.a の値が '"hoge"' であれば JSONTypeError を投げる`, () => {
+        const wrapped = wrap({ a: 'hoge' } as any, constraint);
+        expect(() => { wrapped.a }).toThrow(JSONTypeError);
+      });
     });
   });
 

@@ -1,5 +1,5 @@
 import getTypeName from "./getTypeName"
-import { anyBoolean, anyNumber, anyString, arrayConstraint, union } from "./Constraint"
+import { anyBoolean, anyNumber, anyString, arrayConstraint, union, neverConstraint } from "./Constraint"
 
 describe('getTypeName()', () => {
   test('boolean', () => {
@@ -48,6 +48,14 @@ describe('getTypeName()', () => {
 
   test('number | null | number === number | null', () => {
     expect(getTypeName(union(anyNumber, null, anyNumber))).toBe('number | null');
+  });
+
+  test('never | string === string', () => {
+    expect(getTypeName(union(neverConstraint, anyString))).toBe('string');
+  });
+
+  test('never | never === never', () => {
+    expect(getTypeName(union(neverConstraint, neverConstraint))).toBe('never');
   });
 
   test('(string | string)[] === string[]', () => {

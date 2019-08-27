@@ -1,6 +1,5 @@
 import prettyFormat from 'pretty-format';
-import { AnyBoolean, AnyNumber, AnyString, ArrayConstraint, NeverConstraint, neverConstraint, Union, union } from "./Constraint";
-import getTypeName from "./getTypeName";
+import Constraint, { $never, $union, ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint } from "./Constraint";
 
 export class JSONTypeError implements Error {
   name: string = 'JSONTypeError';
@@ -9,20 +8,24 @@ export class JSONTypeError implements Error {
   constructor(message?: string) { this.message = message || '' }
 }
 
-type JSONType<Constraint> =
-  Constraint extends AnyNumber ? number :
-  Constraint extends AnyString ? string :
-  Constraint extends AnyBoolean ? boolean :
-  Constraint extends ArrayConstraint<infer C> ? { 0: JSONType<C>[] }[Constraint extends Constraint ? 0 : never] :
-  Constraint extends Union<readonly (infer CS)[]> ? { 0: JSONType<CS> }[Constraint extends Constraint ? 0 : never] :
-  Constraint extends object ? { [P in (number | string) & keyof Constraint]: JSONType<Constraint[P]> } :
-  Constraint;
+type JSONType<C extends Constraint> =
+  C extends NumberConstraint ? number :
+  C extends StringConstraint ? string :
+  C extends BooleanConstraint ? boolean :
+  C extends ArrayConstraint<infer D> ? { 0: JSONType<D>[] }[D extends D ? 0 : never] :
+  C extends UnionConstraint<readonly (infer CS & Constraint)[]> ? (
+    CS extends Constraint ? { 0: JSONType<CS> }[C extends C ? 0 : never] :
+    never) :
+  C extends ObjectConstraint<infer D> ? { [P in (number | string) & keyof D]: JSONType<D[P]> } :
+  C extends ConstantConstraint<infer D> ? D :
+  C extends NeverConstraint ? never :
+  unknown;
 
-const valueIsNotType = (value: unknown, constraint: unknown): string =>
-  `Value '${prettyFormat(value, { min: true })}' is not type '${getTypeName(constraint)}'.`
+const valueIsNotType = (value: unknown, constraint: Constraint): string =>
+  `Value '${prettyFormat(value, { min: true })}' is not type '${constraint.typeName}'.`
 
-const check1 = (value: unknown, constraint: unknown): void => {
-  if (constraint instanceof Union) {
+const check1 = (value: unknown, constraint: Constraint): void => {
+  if (constraint instanceof UnionConstraint) {
     const errors: Set<string> = new Set;
     for (const child of constraint.children()) {
       try {
@@ -34,45 +37,45 @@ const check1 = (value: unknown, constraint: unknown): void => {
       return;
     }
     throw new JSONTypeError([valueIsNotType(value, constraint), ...errors].join('\n'));
-  } else if (constraint instanceof AnyBoolean || constraint instanceof AnyNumber || constraint instanceof AnyString) {
+  } else if (constraint instanceof BooleanConstraint || constraint instanceof NumberConstraint || constraint instanceof StringConstraint) {
     if (typeof value !== constraint.typeName) { throw new JSONTypeError(valueIsNotType(value, constraint)); }
-  } else if (constraint instanceof Object) {
+  } else if (constraint instanceof ObjectConstraint) {
     if (!(value instanceof Object)) { throw new JSONTypeError(valueIsNotType(value, constraint)); }
+  } else if (constraint instanceof ConstantConstraint) {
+    if (value !== constraint.value) { throw new JSONTypeError(valueIsNotType(value, constraint)); }
   } else {
-    if (value !== constraint) { throw new JSONTypeError(valueIsNotType(value, constraint)); }
+    throw new Error('Not implemented');
   }
 }
 
-const getConstraintChild =
-  (constraint: unknown, property: string | number): { isValid: true, constraint: unknown } | { isValid: false, constraint: null } => {
-    if (constraint instanceof Union) {
-      const childChildren = new Set;
-      for (const child of constraint.children()) {
-        const { constraint: childChild, isValid: childChildIsValid } = getConstraintChild(child, property);
-        if (!childChildIsValid) { return { isValid: false, constraint: null }; }
-        if (!(childChild instanceof NeverConstraint)) {
-          childChildren.add(childChild);
-        }
-      }
-      return { isValid: true, constraint: union(...childChildren) };
-    } else {
-      if (!(constraint instanceof Object)) {
-        return { isValid: true, constraint: neverConstraint };
-      } else if (!(property in constraint)) {
-        return { isValid: false, constraint: null };
-      } else {
-        return { isValid: true, constraint: (constraint as { [key: string]: unknown })[property] };
+const getConstraintChild = (constraint: Constraint, property: string | number): Constraint | null => {
+  if (constraint instanceof UnionConstraint) {
+    const childChildren: Set<Constraint> = new Set;
+    for (const child of constraint.children()) {
+      const childChild =
+        getConstraintChild(child, property);
+      if (childChild === null) { return null; }
+      if (!(childChild instanceof NeverConstraint)) {
+        childChildren.add(childChild);
       }
     }
+    return $union(...childChildren);
+  } else if (!(constraint instanceof ObjectConstraint)) {
+    return $never;
+  } else if (!(property in constraint.obj)) {
+    return null;
+  } else {
+    return constraint.obj[property];
   }
+}
 
-const wrap = <Constraint extends object>(json: JSONType<Constraint>, constraint: Constraint, jsonToProxy = new Map): JSONType<Constraint> => new Proxy(json, {
-  get(target, property: (number | string) & keyof Constraint) {
+const wrap = <C extends Constraint>(json: JSONType<C> & object, constraint: C, jsonToProxy = new Map): JSONType<C> => new Proxy(json, {
+  get(target, property: (number | string) & keyof C) {
     const targetChild = Reflect.get(target, property);
-    const { constraint: constraintChild, isValid: constraintChildIsValid } = getConstraintChild(constraint, property);
+    const constraintChild = getConstraintChild(constraint, property);
 
     try {
-      if (!constraintChildIsValid) {
+      if (constraintChild === null) {
         return targetChild;
       } else {
         check1(targetChild, constraintChild);
@@ -81,10 +84,7 @@ const wrap = <Constraint extends object>(json: JSONType<Constraint>, constraint:
           if (!jsonToProxy.has(targetChild)) {
             jsonToProxy.set(
               targetChild,
-              wrap(
-                targetChild,
-                constraintChild as object & Constraint[(number | string) & keyof Constraint],
-                jsonToProxy));
+              wrap(targetChild, constraintChild, jsonToProxy));
           }
           return jsonToProxy.get(targetChild)!;
         } else {
@@ -97,5 +97,5 @@ const wrap = <Constraint extends object>(json: JSONType<Constraint>, constraint:
   }
 });
 
-export { anyBoolean, anyNumber, anyString, arrayConstraint, union } from "./Constraint";
+export { $array, $boolean, $const, $false, $null, $number, $object, $string, $true, $undefined, $union } from "./Constraint";
 export default wrap;

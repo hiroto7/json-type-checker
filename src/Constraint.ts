@@ -1,4 +1,4 @@
-import getTypeName from "./getTypeName";
+import prettyFormat = require("pretty-format");
 
 export interface Constraint { readonly constraintName: string; readonly typeName: string; }
 export namespace Constraint {
@@ -7,45 +7,75 @@ export namespace Constraint {
 }
 export default Constraint;
 
-export class AnyNumber implements Constraint { readonly constraintName = 'number'; readonly typeName = 'number'; }
-export class AnyString implements Constraint { readonly constraintName = 'string'; readonly typeName = 'string'; }
-export class AnyBoolean implements Constraint { readonly constraintName = 'boolean'; readonly typeName = 'boolean'; }
+export class NumberConstraint implements Constraint { readonly constraintName = 'number'; readonly typeName = 'number'; }
+export class StringConstraint implements Constraint { readonly constraintName = 'string'; readonly typeName = 'string'; }
+export class BooleanConstraint implements Constraint { readonly constraintName = 'boolean'; readonly typeName = 'boolean'; }
 
-export const anyNumber = new AnyNumber;
-export const anyString = new AnyString;
-export const anyBoolean = new AnyBoolean;
+export const $number = new NumberConstraint;
+export const $string = new StringConstraint;
+export const $boolean = new BooleanConstraint;
 
-export class ArrayConstraint<T> implements Constraint {
+export class ConstantConstraint<V extends string | number | boolean | null | undefined> implements Constraint {
+  readonly constraintName = 'constant';
+  get typeName(): string { return prettyFormat(this.value); }
+  constructor(readonly value: V) { }
+}
+export const $const =
+  <V extends string | number | boolean | null | undefined>(value: V): ConstantConstraint<V> => new ConstantConstraint(value);
+
+export const $true = $const(true);
+export const $false = $const(false);
+export const $null = $const(null);
+export const $undefined = $const(undefined);
+
+export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }> implements Constraint {
+  readonly constraintName = 'object';
+  get typeName(): string {
+    if (Array.isArray(this.obj)) {
+      return `[${this.obj.map((value: Constraint) => value.typeName).join(', ')}]`
+    } else {
+      const keys = Object.keys(this.obj) as (keyof O)[];
+      const entries = Object.entries(this.obj) as [keyof O, O[keyof O]][];
+      return keys.length === 0 ?
+        '{}' :
+        '{ ' + entries.map(([key, value]) => `"${key}": ${value.typeName};`).join(' ') + ' }';
+    }
+  }
+  constructor(readonly obj: O) { }
+}
+export const $object = <O extends object & { [P in keyof O]: Constraint }>(obj: O) => new ObjectConstraint(obj);
+
+export class ArrayConstraint<C extends Constraint> implements Constraint {
   readonly constraintName = 'array';
   get typeName(): string {
-    if (this.child instanceof Union) {
+    if (this.child instanceof UnionConstraint) {
       return `(${this.child.typeName})[]`
     } else {
-      return `${getTypeName(this.child)}[]`
+      return `${this.child.typeName}[]`
     }
   }
-  constructor(readonly child: T) { }
+  constructor(readonly child: C) { }
 }
-export const arrayConstraint = <T>(childType: T): ArrayConstraint<T> => new ArrayConstraint(childType);
+export const $array = <C extends Constraint>(childType: C): ArrayConstraint<C> => new ArrayConstraint(childType);
 
-export class Union<TS extends readonly unknown[]> implements Constraint {
+export class UnionConstraint<CS extends readonly Constraint[]> implements Constraint {
   readonly constraintName = 'union';
-  private readonly _children: TS;
-  get typeName(): string { return this._children.map(type => getTypeName(type)).join(' | ') }
-  constructor(...children: TS) { this._children = children; }
+  private readonly _children: CS;
+  get typeName(): string { return this._children.map(type => type.typeName).join(' | ') }
+  constructor(...children: CS) { this._children = children; }
   *children() { yield* this._children; }
 }
-export const union = <TS extends readonly unknown[]>(...types: TS): TS[0] | Union<TS> => {
-  const map: Map<string, unknown> = new Map();
-  for (const type of types) {
-    if (!(type instanceof NeverConstraint)) {
-      map.set(getTypeName(type), type);
+export const $union = <CS extends readonly Constraint[]>(...children: CS): NeverConstraint | CS[0] | UnionConstraint<CS> => {
+  const map: Map<string, Constraint> = new Map();
+  for (const child of children) {
+    if (!(child instanceof NeverConstraint)) {
+      map.set(child.typeName, child);
     }
   }
-  return map.size === 0 ? neverConstraint :
+  return map.size === 0 ? $never :
     map.size === 1 ? [...map.values()][0] :
-      new Union(...map.values());
+      new UnionConstraint(...map.values());
 }
 
 export class NeverConstraint implements Constraint { readonly constraintName = 'never'; readonly typeName = 'never'; }
-export const neverConstraint = new NeverConstraint;
+export const $never = new NeverConstraint;

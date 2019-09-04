@@ -1,4 +1,4 @@
-import prettyFormat = require("pretty-format");
+import prettyFormat from 'pretty-format';
 
 export interface Constraint { readonly constraintName: string; readonly typeName: string; }
 export namespace Constraint {

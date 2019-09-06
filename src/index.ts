@@ -1,12 +1,5 @@
-import prettyFormat from 'pretty-format';
 import Constraint, { $never, $union, ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint } from "./Constraint";
-
-export class JSONTypeError implements Error {
-  name: string = 'JSONTypeError';
-  message: string;
-  stack?: string | undefined;
-  constructor(message?: string) { this.message = message || '' }
-}
+import JSONTypeError from './JSONTypeError';
 
 type JSONType<C extends Constraint> =
   C extends NumberConstraint ? number :
@@ -20,33 +13,6 @@ type JSONType<C extends Constraint> =
   C extends ConstantConstraint<infer D> ? D :
   C extends NeverConstraint ? never :
   unknown;
-
-const valueIsNotType = (value: unknown, constraint: Constraint): string =>
-  `Value '${prettyFormat(value, { min: true })}' is not type '${constraint.typeName}'.`
-
-const check1 = (value: unknown, constraint: Constraint): void => {
-  if (constraint instanceof UnionConstraint) {
-    const errors: Set<string> = new Set;
-    for (const child of constraint.children()) {
-      try {
-        check1(value, child);
-      } catch (e) {
-        errors.add(e.message);
-        continue;
-      }
-      return;
-    }
-    throw new JSONTypeError([valueIsNotType(value, constraint), ...errors].join('\n'));
-  } else if (constraint instanceof BooleanConstraint || constraint instanceof NumberConstraint || constraint instanceof StringConstraint) {
-    if (typeof value !== constraint.typeName) { throw new JSONTypeError(valueIsNotType(value, constraint)); }
-  } else if (constraint instanceof ObjectConstraint) {
-    if (!(value instanceof Object)) { throw new JSONTypeError(valueIsNotType(value, constraint)); }
-  } else if (constraint instanceof ConstantConstraint) {
-    if (value !== constraint.value) { throw new JSONTypeError(valueIsNotType(value, constraint)); }
-  } else {
-    throw new Error('Not implemented');
-  }
-}
 
 const getConstraintChild = (constraint: Constraint, property: string | number): Constraint | null => {
   if (constraint instanceof UnionConstraint) {
@@ -78,7 +44,7 @@ const wrap = <C extends Constraint>(json: JSONType<C> & object, constraint: C, j
       if (constraintChild === null) {
         return targetChild;
       } else {
-        check1(targetChild, constraintChild);
+        constraintChild.check1(targetChild);
 
         if (targetChild instanceof Object) {
           if (!jsonToProxy.has(targetChild)) {
@@ -92,7 +58,7 @@ const wrap = <C extends Constraint>(json: JSONType<C> & object, constraint: C, j
         }
       }
     } catch (e) {
-      throw new JSONTypeError(`Types of property '${property}' are incompatible.` + '\n' + e.message);
+      throw new JSONTypeError(`Types of property '${property}' are incompatible.`, [e]);
     }
   }
 });

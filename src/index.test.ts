@@ -1,4 +1,5 @@
-import wrap, { $boolean, $const, $false, $null, $number, $object as $, $string, $true, $undefined, $union, JSONTypeError } from "./index";
+import wrap, { $boolean, $const, $false, $null, $number, $object as $, $string, $true, $undefined, $union } from "./index";
+import JSONTypeError from "./JSONTypeError";
 
 describe('wrap()', () => {
 

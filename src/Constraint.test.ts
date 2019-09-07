@@ -93,7 +93,11 @@ describe('Constraint', () => {
         [$true, true],
         [$false, false],
         [$null, null],
-        [$undefined, undefined]
+        [$undefined, undefined],
+        [$union($number, $boolean), 1],
+        [$union($number, $boolean), true],
+        [$union($null, $undefined), null],
+        [$union($null, $undefined), undefined]
       ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
 
       test.each(table)(
@@ -147,13 +151,21 @@ describe('Constraint', () => {
         [$undefined, 1],
         [$undefined, false],
         [$undefined, null],
-        [$undefined, {}]
+        [$undefined, {}],
+        [$never, 'hoge'],
+        [$never, 1],
+        [$never, false],
+        [$never, null],
+        [$never, undefined],
+        [$never, {}],
+        [$union($number, $boolean), 'hoge'],
+        [$union($null, $undefined), 'hoge']
       ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
 
       test.each(table)(
         `型 '%s' が期待されているとき、 'value' が '%p' であれば 'JSONTypeError' を投げる`,
         (_, value, constraint) => {
-          expect(() => constraint.check1(value)).toThrow(JSONTypeError);
+          expect(() => { constraint.check1(value) }).toThrow(JSONTypeError);
         });
     });
   });

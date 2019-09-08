@@ -212,7 +212,7 @@ describe('wrap()', () => {
       test(`値が '"hoge"' であれば JSONTypeError を投げる`, () => {
         const wrapped = wrap({ a: 'hoge' } as any, constraint);
         expect(() => { wrapped.a }).toThrow(JSONTypeError);
-      })
+      });
     });
 
     describe(`型 '{ a: boolean } | { a: number }' が期待されているとき`, () => {
@@ -229,5 +229,4 @@ describe('wrap()', () => {
       });
     });
   });
-
 });

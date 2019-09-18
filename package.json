@@ -11,16 +11,16 @@
   "license": "ISC",
   "devDependencies": {
     "@types/jest": "^24.0.18",
-    "@types/node": "^12.7.4",
+    "@types/node": "^12.7.5",
     "@types/webpack": "^4.39.1",
     "jest": "^24.9.0",
     "pretty-format": "^24.9.0",
-    "ts-jest": "^24.0.2",
-    "ts-loader": "^6.0.4",
-    "ts-node": "^8.3.0",
-    "typescript": "^3.6.2",
-    "webpack": "^4.39.3",
-    "webpack-cli": "^3.3.8"
+    "ts-jest": "^24.1.0",
+    "ts-loader": "^6.1.0",
+    "ts-node": "^8.4.1",
+    "typescript": "^3.6.3",
+    "webpack": "^4.40.2",
+    "webpack-cli": "^3.3.9"
   },
   "jest": {
     "transform": {

@@ -1,10 +1,10 @@
 import prettyFormat from 'pretty-format';
 import { jsonTypeError1 } from './JSONTypeError';
-
 export interface Constraint {
   readonly constraintName: string;
   readonly typeName: string;
   check1(value: unknown): void;
+  getChildByProperty(property: string | number | symbol): Constraint | null;
 }
 export namespace Constraint {
   export const isConstraint =
@@ -12,8 +12,15 @@ export namespace Constraint {
 }
 export default Constraint;
 
-abstract class StringOrNumberOrBooleanConstraint<ConstraintName extends 'string' | 'number' | 'boolean'> implements Constraint {
-  constructor(readonly constraintName: ConstraintName) { }
+abstract class ConstraintWithoutChildren implements Constraint {
+  abstract readonly constraintName: string;
+  abstract readonly typeName: string;
+  abstract check1(value: unknown): void;
+  getChildByProperty(_: string | number | symbol) { return $never; }
+}
+
+abstract class StringOrNumberOrBooleanConstraint<ConstraintName extends 'string' | 'number' | 'boolean'> extends ConstraintWithoutChildren {
+  constructor(readonly constraintName: ConstraintName) { super(); }
   get typeName(): ConstraintName { return this.constraintName; }
   check1(value: unknown) {
     if (typeof value !== this.constraintName) { throw jsonTypeError1(value, this); }
@@ -28,10 +35,10 @@ export const $number = new NumberConstraint;
 export const $string = new StringConstraint;
 export const $boolean = new BooleanConstraint;
 
-export class ConstantConstraint<V extends string | number | boolean | null | undefined> implements Constraint {
+export class ConstantConstraint<V extends string | number | boolean | null | undefined> extends ConstraintWithoutChildren {
   readonly constraintName = 'constant';
   get typeName(): string { return prettyFormat(this.value); }
-  constructor(readonly value: V) { }
+  constructor(readonly value: V) { super(); }
   check1(value: unknown) {
     if (value !== this.value) { throw jsonTypeError1(value, this); }
   }
@@ -45,6 +52,13 @@ export const $null = $const(null);
 export const $undefined = $const(undefined);
 
 export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }> implements Constraint {
+  getChildByProperty(property: string | number | symbol): Constraint | null {
+    if (((property: string | number | symbol): property is keyof O => property in this.obj)(property)) {
+      return this.obj[property];
+    } else {
+      return null;
+    }
+  }
   readonly constraintName = 'object';
   get typeName(): string {
     if (Array.isArray(this.obj)) {
@@ -75,7 +89,10 @@ export class ArrayConstraint<C extends Constraint> implements Constraint {
   }
   constructor(readonly child: C) { }
   check1(/* value: unknown */) {
-    throw new Error('NOT IMPLEMENTED');
+    throw new Error('Method not implemented.');
+  }
+  getChildByProperty(_: string | number | symbol): Constraint | null {
+    throw new Error('Method not implemented.');
   }
 }
 export const $array = <C extends Constraint>(childType: C): ArrayConstraint<C> => new ArrayConstraint(childType);
@@ -99,6 +116,17 @@ export class UnionConstraint<CS extends readonly Constraint[]> implements Constr
     }
     throw jsonTypeError1(value, this, errors);
   }
+  getChildByProperty(property: string | number | symbol): Constraint | null {
+    const childChildren: Set<Constraint> = new Set;
+    for (const child of this.children()) {
+      const childChild = child.getChildByProperty(property);
+      if (childChild === null) { return null; }
+      if (!(childChild instanceof NeverConstraint)) {
+        childChildren.add(childChild);
+      }
+    }
+    return $union(...childChildren);
+  }
 }
 export const $union = <CS extends readonly Constraint[]>(...children: CS): NeverConstraint | CS[0] | UnionConstraint<CS> => {
   const map: Map<string, Constraint> = new Map();
@@ -112,7 +140,7 @@ export const $union = <CS extends readonly Constraint[]>(...children: CS): Never
       new UnionConstraint(...map.values());
 }
 
-export class NeverConstraint implements Constraint {
+export class NeverConstraint extends ConstraintWithoutChildren {
   readonly constraintName = 'never';
   readonly typeName = 'never';
   check1(value: unknown): void {

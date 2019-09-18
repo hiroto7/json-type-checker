@@ -1,4 +1,4 @@
-import Constraint, { $never, $union, ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint } from "./Constraint";
+import Constraint, { ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint } from "./Constraint";
 import JSONTypeError from './JSONTypeError';
 
 type JSONType<C extends Constraint> =
@@ -14,31 +14,10 @@ type JSONType<C extends Constraint> =
   C extends NeverConstraint ? never :
   unknown;
 
-const getConstraintChild = (constraint: Constraint, property: string | number): Constraint | null => {
-  if (constraint instanceof UnionConstraint) {
-    const childChildren: Set<Constraint> = new Set;
-    for (const child of constraint.children()) {
-      const childChild =
-        getConstraintChild(child, property);
-      if (childChild === null) { return null; }
-      if (!(childChild instanceof NeverConstraint)) {
-        childChildren.add(childChild);
-      }
-    }
-    return $union(...childChildren);
-  } else if (!(constraint instanceof ObjectConstraint)) {
-    return $never;
-  } else if (!(property in constraint.obj)) {
-    return null;
-  } else {
-    return constraint.obj[property];
-  }
-}
-
 const wrap = <C extends Constraint>(json: JSONType<C> & object, constraint: C, jsonToProxy = new Map): JSONType<C> => new Proxy(json, {
-  get(target, property: (number | string) & keyof C) {
+  get(target, property: (string | number | symbol) & keyof C) {
     const targetChild = Reflect.get(target, property);
-    const constraintChild = getConstraintChild(constraint, property);
+    const constraintChild = constraint.getChildByProperty(property);
 
     try {
       if (constraintChild === null) {
@@ -58,7 +37,7 @@ const wrap = <C extends Constraint>(json: JSONType<C> & object, constraint: C, j
         }
       }
     } catch (e) {
-      throw new JSONTypeError(`Types of property '${property}' are incompatible.`, [e]);
+      throw new JSONTypeError(`Types of property '${property.toString()}' are incompatible.`, [e]);
     }
   }
 });

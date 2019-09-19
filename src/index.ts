@@ -15,14 +15,14 @@ type JSONType<C extends Constraint> =
   unknown;
 
 const wrap = <C extends Constraint>(json: JSONType<C> & object, constraint: C, jsonToProxy = new Map): JSONType<C> => new Proxy(json, {
-  get(target, property: (string | number | symbol) & keyof C) {
-    const targetChild = Reflect.get(target, property);
+  get(target, property: string | number | symbol): unknown {
+    const targetChild: unknown = Reflect.get(target, property);
     const constraintChild = constraint.getChildByProperty(property);
 
-    try {
-      if (constraintChild === null) {
-        return targetChild;
-      } else {
+    if (constraintChild === null) {
+      return targetChild;
+    } else {
+      try {
         constraintChild.check1(targetChild);
 
         if (targetChild instanceof Object) {
@@ -35,9 +35,9 @@ const wrap = <C extends Constraint>(json: JSONType<C> & object, constraint: C, j
         } else {
           return targetChild;
         }
+      } catch (e) {
+        throw new JSONTypeError(`Types of property '${property.toString()}' are incompatible.`, [e]);
       }
-    } catch (e) {
-      throw new JSONTypeError(`Types of property '${property.toString()}' are incompatible.`, [e]);
     }
   }
 });

@@ -1,5 +1,5 @@
 import Constraint, { ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint } from "./Constraint";
-import JSONTypeError from './JSONTypeError';
+import { jsonTypeError1, jsonTypeError2 } from './JSONTypeError';
 
 type JSONType<C extends Constraint> =
   C extends NumberConstraint ? number :
@@ -14,7 +14,31 @@ type JSONType<C extends Constraint> =
   C extends NeverConstraint ? never :
   unknown;
 
-const wrap = <C extends Constraint>(json: JSONType<C> & object, constraint: C, jsonToProxy = new Map): JSONType<C> => new Proxy(json, {
+type PathToRootInit = {
+  readonly property: string | number | symbol;
+  readonly value: unknown;
+  readonly constraint: Constraint;
+  readonly parent: PathToRoot | null;
+}
+
+class PathToRoot implements PathToRootInit {
+  readonly property: string | number | symbol;
+  readonly value: unknown;
+  readonly constraint: Constraint;
+  readonly parent: PathToRoot | null;
+  constructor({ property, value, constraint, parent }: PathToRootInit) {
+    this.property = property;
+    this.value = value;
+    this.constraint = constraint;
+    this.parent = parent;
+  }
+  *[Symbol.iterator](): Generator<PathToRoot, void, unknown> {
+    yield this;
+    if (this.parent !== null) { yield* this.parent; }
+  }
+}
+
+const wrap = <C extends Constraint>(value: JSONType<C> & object, constraint: C, jsonToProxy = new Map, pathToRoot: PathToRoot | null = null): JSONType<C> => new Proxy(value, {
   get(target, property: string | number | symbol): unknown {
     const targetChild: unknown = Reflect.get(target, property);
     const constraintChild = constraint.getChildByProperty(property);
@@ -29,14 +53,24 @@ const wrap = <C extends Constraint>(json: JSONType<C> & object, constraint: C, j
           if (!jsonToProxy.has(targetChild)) {
             jsonToProxy.set(
               targetChild,
-              wrap(targetChild, constraintChild, jsonToProxy));
+              wrap(
+                targetChild, constraintChild, jsonToProxy,
+                new PathToRoot({ property, value, constraint, parent: pathToRoot })));
           }
           return jsonToProxy.get(targetChild)!;
         } else {
           return targetChild;
         }
       } catch (e) {
-        throw new JSONTypeError(`Types of property '${property.toString()}' are incompatible.`, [e]);
+        e = jsonTypeError2(property, [e]);
+        e = jsonTypeError1(value, constraint, [e]);
+        if (pathToRoot !== null) {
+          for (const path of pathToRoot) {
+            e = jsonTypeError2(path.property, [e]);
+            e = jsonTypeError1(path.value, path.constraint, [e]);
+          }
+        }
+        throw e;
       }
     }
   }

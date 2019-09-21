@@ -21,3 +21,8 @@ export const jsonTypeError1 = (value: unknown, constraint: Constraint, children:
   new JSONTypeError(
     `Value '${prettyFormat(value, { min: true, maxDepth: 1 })}' is not type '${constraint.typeName}'.`,
     children);
+
+export const jsonTypeError2 = (property: string | number | symbol, children: Iterable<unknown> = []): JSONTypeError =>
+  new JSONTypeError(
+    `Types of property '${property.toString()}' are incompatible.`,
+    children);

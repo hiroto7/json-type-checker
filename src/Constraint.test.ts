@@ -1,5 +1,5 @@
 import Constraint, { $array, $boolean, $const, $false, $never, $null, $number, $object, $string, $true, $undefined, $union } from "./Constraint";
-import JSONTypeError from "./JSONTypeError";
+import CheckerError from "./JSONTypeError";
 
 describe('Constraint', () => {
   describe('Constraint.typeName', () => {
@@ -158,7 +158,7 @@ describe('Constraint', () => {
         });
     });
 
-    describe(`'value' が期待されている型でない場合、 'JSONTypeError' を投げる`, () => {
+    describe(`'value' が期待されている型でない場合、 'CheckerError' を投げる`, () => {
       const table: [string, unknown, Constraint][] = ([
         [$string, 1],
         [$string, false],
@@ -214,9 +214,9 @@ describe('Constraint', () => {
       ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
 
       test.each(table)(
-        `型 '%s' が期待されているとき、 'value' が '%p' であれば 'JSONTypeError' を投げる`,
+        `型 '%s' が期待されているとき、 'value' が '%p' であれば 'CheckerError' を投げる`,
         (_, value, constraint) => {
-          expect(() => { constraint.check1(value) }).toThrow(JSONTypeError);
+          expect(() => { constraint.check1(value) }).toThrow(CheckerError);
         });
     });
   });

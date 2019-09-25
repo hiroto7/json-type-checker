@@ -1,5 +1,5 @@
 import prettyFormat from 'pretty-format';
-import { jsonTypeError1 } from './JSONTypeError';
+import { ErrorWithChildren, CheckerError1 } from './JSONTypeError';
 export interface Constraint {
   readonly constraintName: string;
   readonly typeName: string;
@@ -23,7 +23,7 @@ abstract class StringOrNumberOrBooleanConstraint<ConstraintName extends 'string'
   constructor(readonly constraintName: ConstraintName) { super(); }
   get typeName(): ConstraintName { return this.constraintName; }
   check1(value: unknown) {
-    if (typeof value !== this.constraintName) { throw jsonTypeError1(value, this); }
+    if (typeof value !== this.constraintName) { throw new CheckerError1(value, this); }
   }
 }
 
@@ -40,7 +40,7 @@ export class ConstantConstraint<V extends string | number | boolean | null | und
   get typeName(): string { return prettyFormat(this.value); }
   constructor(readonly value: V) { super(); }
   check1(value: unknown) {
-    if (value !== this.value) { throw jsonTypeError1(value, this); }
+    if (value !== this.value) { throw new CheckerError1(value, this); }
   }
 }
 export const $const =
@@ -73,7 +73,7 @@ export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }>
   }
   constructor(readonly obj: O) { }
   check1(value: unknown) {
-    if (!(value instanceof Object)) { throw jsonTypeError1(value, this); }
+    if (!(value instanceof Object)) { throw new CheckerError1(value, this); }
   }
 }
 export const $object = <O extends object & { [P in keyof O]: Constraint }>(obj: O) => new ObjectConstraint(obj);
@@ -114,7 +114,7 @@ export class UnionConstraint<CS extends readonly Constraint[]> implements Constr
       }
       return;
     }
-    throw jsonTypeError1(value, this, errors);
+    throw new ErrorWithChildren(new CheckerError1(value, this), ...errors);
   }
   getChildByProperty(property: string | number | symbol): Constraint | null {
     const childChildren: Set<Constraint> = new Set;
@@ -144,7 +144,7 @@ export class NeverConstraint extends ConstraintWithoutChildren {
   readonly constraintName = 'never';
   readonly typeName = 'never';
   check1(value: unknown): void {
-    throw jsonTypeError1(value, this);
+    throw new CheckerError1(value, this);
   }
 }
 export const $never = new NeverConstraint;

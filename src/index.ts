@@ -1,5 +1,5 @@
 import Constraint, { ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint } from "./Constraint";
-import { jsonTypeError1, jsonTypeError2 } from './JSONTypeError';
+import { CheckerError1, CheckerError2, ErrorWithChildren } from './JSONTypeError';
 
 type JSONType<C extends Constraint> =
   C extends NumberConstraint ? number :
@@ -62,12 +62,12 @@ const wrap = <C extends Constraint>(value: JSONType<C> & object, constraint: C, 
           return targetChild;
         }
       } catch (e) {
-        e = jsonTypeError2(property, [e]);
-        e = jsonTypeError1(value, constraint, [e]);
+        e = new ErrorWithChildren(new CheckerError2(property), e);
+        e = new ErrorWithChildren(new CheckerError1(value, constraint), e);
         if (pathToRoot !== null) {
           for (const path of pathToRoot) {
-            e = jsonTypeError2(path.property, [e]);
-            e = jsonTypeError1(path.value, path.constraint, [e]);
+            e = new ErrorWithChildren(new CheckerError2(path.property), e);
+            e = new ErrorWithChildren(new CheckerError1(path.value, path.constraint), e);
           }
         }
         throw e;

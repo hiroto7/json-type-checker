@@ -1,5 +1,5 @@
 import wrap, { $boolean, $const, $false, $null, $number, $object as $, $string, $true, $undefined, $union } from "./index";
-import JSONTypeError from "./JSONTypeError";
+import CheckerError from "./JSONTypeError";
 
 describe('wrap()', () => {
 
@@ -32,9 +32,9 @@ describe('wrap()', () => {
       ${'false'}     | ${$false}
       ${'null'}      | ${$null}
       ${'undefined'} | ${$undefined}
-    `(`型 '$typeName' が期待されているとき、プロパティが存在しなければ JSONTypeError を投げる`, ({ constraint }) => {
+    `(`型 '$typeName' が期待されているとき、プロパティが存在しなければ CheckerError を投げる`, ({ constraint }) => {
       const wrapped = wrap({} as any, $({ a: constraint }));
-      expect(() => { wrapped.a }).toThrow(JSONTypeError);
+      expect(() => { wrapped.a }).toThrow(CheckerError);
     });
 
   });
@@ -42,16 +42,16 @@ describe('wrap()', () => {
   describe('オブジェクト型のアサーション', () => {
 
     test.each(['hoge', 1, false, null, undefined] as const)(
-      `オブジェクト型が期待されているとき、値が %p であれば JSONTypeError を投げる`,
+      `オブジェクト型が期待されているとき、値が %p であれば CheckerError を投げる`,
       value => {
         const wrapped = wrap({ a: value } as any, $({ a: $({}) }));
-        expect(() => { wrapped.a }).toThrow(JSONTypeError);
+        expect(() => { wrapped.a }).toThrow(CheckerError);
       }
     );
 
-    test('オブジェクト型が期待されているとき、プロパティが存在しなければ JSONTypeError を投げる', () => {
+    test('オブジェクト型が期待されているとき、プロパティが存在しなければ CheckerError を投げる', () => {
       const wrapped = wrap({ b: 2 } as any, $({ a: $({}) }));
-      expect(() => { wrapped.a }).toThrow(JSONTypeError);
+      expect(() => { wrapped.a }).toThrow(CheckerError);
     });
 
     describe('.a.b に関して', () => {
@@ -66,13 +66,13 @@ describe('wrap()', () => {
         expect(wrapped.a.b).toBe(1);
       });
 
-      test('型が誤っていれば JSONTypeError をスローする', () => {
+      test('型が誤っていれば CheckerError をスローする', () => {
         const wrapped = wrap(json as any, $({
           a: $({
             b: $string
           })
         }));
-        expect(() => { wrapped.a.b }).toThrow(JSONTypeError);
+        expect(() => { wrapped.a.b }).toThrow(CheckerError);
       });
     });
 
@@ -90,7 +90,7 @@ describe('wrap()', () => {
         expect(wrapped.a.b.c).toBe(1);
       });
 
-      test('型が誤っていれば JSONTypeError をスローする', () => {
+      test('型が誤っていれば CheckerError をスローする', () => {
         const wrapped = wrap(json as any, $({
           a: $({
             b: $({
@@ -98,7 +98,7 @@ describe('wrap()', () => {
             })
           })
         }));
-        expect(() => { wrapped.a.b.c }).toThrow(JSONTypeError);
+        expect(() => { wrapped.a.b.c }).toThrow(CheckerError);
       });
     });
 
@@ -140,9 +140,9 @@ describe('wrap()', () => {
         expect(wrapped.a).toBe(true);
       });
 
-      test(`値が '"hoge"' であれば JSONTypeError を投げる`, () => {
+      test(`値が '"hoge"' であれば CheckerError を投げる`, () => {
         const wrapped = wrap({ a: 'hoge' } as any, constraint);
-        expect(() => { wrapped.a }).toThrow(JSONTypeError);
+        expect(() => { wrapped.a }).toThrow(CheckerError);
       });
     });
 
@@ -154,9 +154,9 @@ describe('wrap()', () => {
         expect(wrapped.a).toBe(true);
       });
 
-      test(`.a の値が '"hoge"' であれば JSONTypeError を投げる`, () => {
+      test(`.a の値が '"hoge"' であれば CheckerError を投げる`, () => {
         const wrapped = wrap({ a: 'hoge' } as any, constraint);
-        expect(() => { wrapped.a }).toThrow(JSONTypeError);
+        expect(() => { wrapped.a }).toThrow(CheckerError);
       });
     });
   });

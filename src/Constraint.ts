@@ -1,5 +1,5 @@
 import prettyFormat from 'pretty-format';
-import { ErrorWithChildren, CheckerError1 } from './JSONTypeError';
+import { ErrorWithChildren, CheckerError1 } from './CheckerError';
 export interface Constraint {
   readonly constraintName: string;
   readonly typeName: string;
@@ -88,11 +88,17 @@ export class ArrayConstraint<C extends Constraint> implements Constraint {
     }
   }
   constructor(readonly child: C) { }
-  check1(/* value: unknown */) {
-    throw new Error('Method not implemented.');
+  check1(value: unknown) {
+    if (!(value instanceof Array)) { throw new CheckerError1(value, this); };
   }
-  getChildByProperty(_: string | number | symbol): Constraint | null {
-    throw new Error('Method not implemented.');
+  getChildByProperty(property: string | number | symbol): C | null {
+    if (typeof property === 'symbol') {
+      return null;
+    } else if (typeof property === 'string') {
+      return Number.isInteger(Number.parseFloat(property)) ? this.child : null;
+    } else {
+      return Number.isInteger(property) ? this.child : null;
+    }
   }
 }
 export const $array = <C extends Constraint>(childType: C): ArrayConstraint<C> => new ArrayConstraint(childType);

@@ -1,5 +1,5 @@
 import Constraint, { ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint } from "./Constraint";
-import { CheckerError1, CheckerError2, ErrorWithChildren } from './JSONTypeError';
+import { CheckerError1, CheckerError2, ErrorWithChildren } from './CheckerError';
 
 type JSONType<C extends Constraint> =
   C extends NumberConstraint ? number :

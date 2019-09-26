@@ -1,5 +1,5 @@
 import Constraint, { $array, $boolean, $const, $false, $never, $null, $number, $object, $string, $true, $undefined, $union } from "./Constraint";
-import CheckerError from "./JSONTypeError";
+import CheckerError from "./CheckerError";
 
 describe('Constraint', () => {
   describe('Constraint.typeName', () => {

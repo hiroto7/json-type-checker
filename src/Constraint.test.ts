@@ -3,96 +3,28 @@ import CheckerError from "./CheckerError";
 
 describe('Constraint', () => {
   describe('Constraint.typeName', () => {
-    test('boolean', () => {
-      expect($boolean.typeName).toBe('boolean');
-    });
-
-    test('number', () => {
-      expect($number.typeName).toBe('number');
-    });
-
-    test('string', () => {
-      expect($string.typeName).toBe('string');
-    });
-
-    test('null', () => {
-      expect($const(null).typeName).toBe('null');
-    });
-
-    test('undefined', () => {
-      expect($const(undefined).typeName).toBe('undefined');
-    });
-
-    test('true', () => {
-      expect($const(true).typeName).toBe('true');
-    });
-
-    test('1', () => {
-      expect($const(1).typeName).toBe("1");
-    });
-
-    test(`"hoge"`, () => {
-      expect($const('hoge').typeName).toBe(`"hoge"`);
-    });
-
-    test('string | number', () => {
-      expect($union($string, $number).typeName).toBe('string | number');
-    });
-
-    test('number[]', () => {
-      expect($array($number).typeName).toBe('number[]');
-    });
-
-    test('(number | boolean)[]', () => {
-      expect($array($union($number, $boolean)).typeName).toBe('(number | boolean)[]');
-    });
-
-    test('number | null | number => number | null', () => {
-      expect($union($number, $const(null), $number).typeName).toBe('number | null');
-    });
-
-    test('never | string => string', () => {
-      expect($union($never, $string).typeName).toBe('string');
-    });
-
-    test('never | never => never', () => {
-      expect($union($never, $never).typeName).toBe('never');
-    });
-
-    test('number | (number | null) => number | null', () => {
-      expect($union($number, $union($number, $null)).typeName).toBe('number | null')
-    });
-
-    test('undefined | null | {} | boolean | number | string => string | number | boolean | {} | null | undefined', () => {
-      expect($union($undefined, $null, $object({}), $boolean, $number, $string).typeName)
-        .toBe('string | number | boolean | {} | null | undefined');
-    });
-
-    test('null | "hoge" | boolean => boolean | "hoge" | null', () => {
-      expect($union($null, $const("hoge"), $boolean).typeName).toBe('boolean | "hoge" | null');
-    });
-
-    test('null | "hoge" | true | number => number | true | "hoge" | null', () => {
-      expect($union($null, $const("hoge"), $true, $number).typeName).toBe('number | true | "hoge" | null');
-    });
-
-    test('(string | string)[] => string[]', () => {
-      expect($array($union($string, $string)).typeName).toBe('string[]');
-    });
-
-    test('[boolean, number, string, null, undefined]', () => {
-      expect($object([$boolean, $number, $string, $const(null), $const(undefined)]).typeName).toBe('[boolean, number, string, null, undefined]');
-    });
-
-    test('{}', () => {
-      expect($object({}).typeName).toBe('{}')
-    });
-
-    test('{ "a": number; "b": string | true; }', () => {
-      expect($object({
+    const table: [string, Constraint][] = [
+      ['boolean', $boolean],
+      ['number', $number],
+      ['string', $string],
+      ['null', $const(null)],
+      ['undefined', $const(undefined)],
+      ['true', $const(true)],
+      ['1', $const(1)],
+      ['"hoge"', $const('hoge')],
+      ['string | number', $union($string, $number)],
+      ['number[]', $array($number)],
+      ['(number | boolean)[]', $array($union($number, $boolean))],
+      ['[boolean, number, string, null, undefined]', $object([$boolean, $number, $string, $const(null), $const(undefined)])],
+      ['{}', $object({})],
+      ['{ "a": number; "b": string | true; }', $object({
         a: $number,
         b: $union($string, $true)
-      }).typeName).toBe('{ "a": number; "b": string | true; }')
+      })]
+    ];
+
+    test.each(table)('%s', (typeName: string, constraint: Constraint) => {
+      expect(constraint.typeName).toBe(typeName);
     });
   });
 
@@ -235,6 +167,53 @@ describe('Constraint', () => {
         (_, value, constraint) => {
           expect(() => { constraint.check1(value) }).toThrow(CheckerError);
         });
+    });
+  });
+});
+
+describe('$union()', () => {
+  describe('型の消去', () => {
+    describe('2回以上出現した型は消去される', () => {
+      test('number | null | number => number | null', () => {
+        expect($union($number, $const(null), $number).typeName).toBe('number | null');
+      });
+
+      test('(string | string)[] => string[]', () => {
+        expect($array($union($string, $string)).typeName).toBe('string[]');
+      });
+    });
+
+    describe(`'never' 型は消去される`, () => {
+      test('never | string => string', () => {
+        expect($union($never, $string).typeName).toBe('string');
+      });
+    });
+
+    describe(`すべての型が消去された場合、 'never' 型`, () => {
+      test('never | never => never', () => {
+        expect($union($never, $never).typeName).toBe('never');
+      });
+    });
+  });
+
+  describe('ネストされた `$union()` は展開される', () => {
+    test('number | (number | null) => number | null', () => {
+      expect($union($number, $union($number, $null)).typeName).toBe('number | null')
+    });
+  });
+
+  describe('型の出現順序', () => {
+    test('undefined | null | {} | boolean | number | string => string | number | boolean | {} | null | undefined', () => {
+      expect($union($undefined, $null, $object({}), $boolean, $number, $string).typeName)
+        .toBe('string | number | boolean | {} | null | undefined');
+    });
+
+    test('null | "hoge" | boolean => boolean | "hoge" | null', () => {
+      expect($union($null, $const("hoge"), $boolean).typeName).toBe('boolean | "hoge" | null');
+    });
+
+    test('null | "hoge" | true | number => number | true | "hoge" | null', () => {
+      expect($union($null, $const("hoge"), $true, $number).typeName).toBe('number | true | "hoge" | null');
     });
   });
 });

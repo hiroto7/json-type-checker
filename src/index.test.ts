@@ -1,10 +1,10 @@
-import wrap, { $boolean, $const, $false, $null, $number, $object as $, $string, $true, $undefined, $union } from "./index";
 import CheckerError from "./CheckerError";
+import wrap, { $boolean, $number, $object, $string, $union } from "./index";
 
 describe('wrap()', () => {
 
-  describe('制約で未定義のプロパティのアサーション', () => {
-    const constraint = $({ a: $number });
+  describe('制約で未定義のプロパティを参照した場合、その値を返す', () => {
+    const constraint = $object({ a: $number });
 
     test(`制約で未定義のプロパティを参照し、値が '1' であればその値を返す`, () => {
       const json = { a: 1, b: 2 } as const;
@@ -19,38 +19,10 @@ describe('wrap()', () => {
     });
   });
 
-  describe('プリミティブ型のアサーション', () => {
-
-    test.skip.each`
-      typeName       | constraint
-      ${'string'}    | ${$string}
-      ${'fuga'}      | ${$const('fuga')}
-      ${'number'}    | ${$number}
-      ${'2'}         | ${$const(2)}
-      ${'boolean'}   | ${$boolean}
-      ${'true'}      | ${$true}
-      ${'false'}     | ${$false}
-      ${'null'}      | ${$null}
-      ${'undefined'} | ${$undefined}
-    `(`型 '$typeName' が期待されているとき、プロパティが存在しなければ CheckerError を投げる`, ({ constraint }) => {
-      const wrapped = wrap({} as any, $({ a: constraint }));
-      expect(() => { wrapped.a }).toThrow(CheckerError);
-    });
-
-  });
-
   describe('オブジェクト型のアサーション', () => {
 
-    test.each(['hoge', 1, false, null, undefined] as const)(
-      `オブジェクト型が期待されているとき、値が %p であれば CheckerError を投げる`,
-      value => {
-        const wrapped = wrap({ a: value } as any, $({ a: $({}) }));
-        expect(() => { wrapped.a }).toThrow(CheckerError);
-      }
-    );
-
     test('オブジェクト型が期待されているとき、プロパティが存在しなければ CheckerError を投げる', () => {
-      const wrapped = wrap({ b: 2 } as any, $({ a: $({}) }));
+      const wrapped = wrap({ b: 2 } as any, $object({ a: $object({}) }));
       expect(() => { wrapped.a }).toThrow(CheckerError);
     });
 
@@ -58,8 +30,8 @@ describe('wrap()', () => {
       const json = { a: { b: 1 } } as const;
 
       test('型が正しければその値を返す', () => {
-        const wrapped = wrap(json, $({
-          a: $({
+        const wrapped = wrap(json, $object({
+          a: $object({
             b: $number
           })
         }));
@@ -67,8 +39,8 @@ describe('wrap()', () => {
       });
 
       test('型が誤っていれば CheckerError をスローする', () => {
-        const wrapped = wrap(json as any, $({
-          a: $({
+        const wrapped = wrap(json as any, $object({
+          a: $object({
             b: $string
           })
         }));
@@ -80,9 +52,9 @@ describe('wrap()', () => {
       const json = { a: { b: { c: 1 } } } as const;
 
       test('型が正しければその値を返す', () => {
-        const wrapped = wrap(json, $({
-          a: $({
-            b: $({
+        const wrapped = wrap(json, $object({
+          a: $object({
+            b: $object({
               c: $number
             })
           })
@@ -91,9 +63,9 @@ describe('wrap()', () => {
       });
 
       test('型が誤っていれば CheckerError をスローする', () => {
-        const wrapped = wrap(json as any, $({
-          a: $({
-            b: $({
+        const wrapped = wrap(json as any, $object({
+          a: $object({
+            b: $object({
               c: $string
             })
           })
@@ -105,10 +77,10 @@ describe('wrap()', () => {
     describe('同一のオブジェクトに対し同一の Proxy を返す', () => {
       const a = { b: 1 } as const;
       const json = { a, c: { a } };
-      const wrapped = wrap(json, $({
-        a: $({ b: $number }),
-        c: $({
-          a: $({
+      const wrapped = wrap(json, $object({
+        a: $object({ b: $number }),
+        c: $object({
+          a: $object({
             b: $number
           })
         })
@@ -133,7 +105,7 @@ describe('wrap()', () => {
 
   describe('ユニオン型のアサーション', () => {
     describe(`型 'boolean | number' が期待されているとき`, () => {
-      const constraint = $({ a: $union($boolean, $number) });
+      const constraint = $object({ a: $union($boolean, $number) });
 
       test(`値が 'true' であればその値を返す`, () => {
         const wrapped = wrap({ a: true }, constraint);
@@ -147,7 +119,7 @@ describe('wrap()', () => {
     });
 
     describe(`型 '{ a: boolean } | { a: number }' が期待されているとき`, () => {
-      const constraint = $union($({ a: $boolean }), $({ a: $number }));
+      const constraint = $union($object({ a: $boolean }), $object({ a: $number }));
 
       test(`.a の値が 'true' であればその値を返す`, () => {
         const wrapped = wrap({ a: true }, constraint);

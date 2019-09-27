@@ -94,10 +94,14 @@ describe('Constraint', () => {
         [$false, false],
         [$null, null],
         [$undefined, undefined],
+        [$object({}), {}],
+        [$array($number), [0, 1]],
         [$union($number, $boolean), 1],
         [$union($number, $boolean), true],
         [$union($null, $undefined), null],
-        [$union($null, $undefined), undefined]
+        [$union($null, $undefined), undefined],
+        [$union($object({}), $array($number)), {}],
+        [$union($object({}), $array($number)), [0, 1]],
       ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
 
       test.each(table)(
@@ -152,6 +156,17 @@ describe('Constraint', () => {
         [$undefined, false],
         [$undefined, null],
         [$undefined, {}],
+        [$object({}), 'hoge'],
+        [$object({}), 1],
+        [$object({}), false],
+        [$object({}), null],
+        [$object({}), undefined],
+        [$array($number), 'hoge'],
+        [$array($number), 1],
+        [$array($number), false],
+        [$array($number), null],
+        [$array($number), undefined],
+        [$array($number), {}],
         [$never, 'hoge'],
         [$never, 1],
         [$never, false],
@@ -159,7 +174,8 @@ describe('Constraint', () => {
         [$never, undefined],
         [$never, {}],
         [$union($number, $boolean), 'hoge'],
-        [$union($null, $undefined), 'hoge']
+        [$union($null, $undefined), 'hoge'],
+        [$union($object({}), $array($number)), 'hoge'],
       ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
 
       test.each(table)(

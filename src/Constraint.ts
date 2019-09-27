@@ -3,6 +3,7 @@ import { ErrorWithChildren, CheckerError1 } from './CheckerError';
 export interface Constraint {
   readonly constraintName: string;
   readonly typeName: string;
+  readonly priority: number;
   check1(value: unknown): void;
   getChildByProperty(property: string | number | symbol): Constraint | null;
 }
@@ -15,27 +16,34 @@ export default Constraint;
 abstract class ConstraintWithoutChildren implements Constraint {
   abstract readonly constraintName: string;
   abstract readonly typeName: string;
+  abstract readonly priority: number;
   abstract check1(value: unknown): void;
   getChildByProperty(_: string | number | symbol) { return $never; }
 }
 
 abstract class StringOrNumberOrBooleanConstraint<ConstraintName extends 'string' | 'number' | 'boolean'> extends ConstraintWithoutChildren {
-  constructor(readonly constraintName: ConstraintName) { super(); }
+  constructor(readonly constraintName: ConstraintName, readonly priority: number) { super(); }
   get typeName(): ConstraintName { return this.constraintName; }
   check1(value: unknown) {
     if (typeof value !== this.constraintName) { throw new CheckerError1(value, this); }
   }
 }
 
-export class StringConstraint extends StringOrNumberOrBooleanConstraint<'string'> { constructor() { super('string'); } }
-export class NumberConstraint extends StringOrNumberOrBooleanConstraint<'number'> { constructor() { super('number'); } }
-export class BooleanConstraint extends StringOrNumberOrBooleanConstraint<'boolean'> { constructor() { super('boolean'); } }
+export class StringConstraint extends StringOrNumberOrBooleanConstraint<'string'> { constructor() { super('string', 1); } }
+export class NumberConstraint extends StringOrNumberOrBooleanConstraint<'number'> { constructor() { super('number', 2); } }
+export class BooleanConstraint extends StringOrNumberOrBooleanConstraint<'boolean'> { constructor() { super('boolean', 3); } }
 
 export const $number = new NumberConstraint;
 export const $string = new StringConstraint;
 export const $boolean = new BooleanConstraint;
 
 export class ConstantConstraint<V extends string | number | boolean | null | undefined> extends ConstraintWithoutChildren {
+  get priority(): number {
+    if (this.value === undefined) { return 99; }
+    else if (this.value === null) { return 98; }
+    else if (typeof this.value === 'boolean') { return 4; }
+    else { return 5; }
+  }
   readonly constraintName = 'constant';
   get typeName(): string { return prettyFormat(this.value); }
   constructor(readonly value: V) { super(); }
@@ -60,6 +68,7 @@ export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }>
     }
   }
   readonly constraintName = 'object';
+  readonly priority: number = 6;
   get typeName(): string {
     if (Array.isArray(this.obj)) {
       return `[${this.obj.map((value: Constraint) => value.typeName).join(', ')}]`
@@ -80,6 +89,7 @@ export const $object = <O extends object & { [P in keyof O]: Constraint }>(obj: 
 
 export class ArrayConstraint<C extends Constraint> implements Constraint {
   readonly constraintName = 'array';
+  readonly priority: number = 6;
   get typeName(): string {
     if (this.child instanceof UnionConstraint) {
       return `(${this.child.typeName})[]`
@@ -105,6 +115,7 @@ export const $array = <C extends Constraint>(childType: C): ArrayConstraint<C> =
 
 export class UnionConstraint<CS extends readonly Constraint[]> implements Constraint {
   readonly constraintName = 'union';
+  readonly priority: number = 0;
   private readonly _children: CS;
   get typeName(): string { return this._children.map(type => type.typeName).join(' | ') }
   constructor(...children: CS) { this._children = children; }
@@ -147,12 +158,13 @@ export const $union = <CS extends readonly Constraint[]>(...children: CS): Never
   }
   return map.size === 0 ? $never :
     map.size === 1 ? [...map.values()][0] :
-      new UnionConstraint(...map.values());
+      new UnionConstraint(...[...map.values()].sort((a, b) => a.priority - b.priority));
 }
 
 export class NeverConstraint extends ConstraintWithoutChildren {
   readonly constraintName = 'never';
   readonly typeName = 'never';
+  readonly priority = 0;
   check1(value: unknown): void {
     throw new CheckerError1(value, this);
   }

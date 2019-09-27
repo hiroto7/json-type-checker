@@ -35,35 +35,48 @@ describe('Constraint', () => {
       expect($const('hoge').typeName).toBe(`"hoge"`);
     });
 
-    test('number | string', () => {
-      expect($union($number, $string).typeName).toBe('number | string');
+    test('string | number', () => {
+      expect($union($string, $number).typeName).toBe('string | number');
     });
 
     test('number[]', () => {
       expect($array($number).typeName).toBe('number[]');
     });
 
-    test('(boolean | number)[]', () => {
-      expect($array($union($boolean, $number)).typeName).toBe('(boolean | number)[]');
+    test('(number | boolean)[]', () => {
+      expect($array($union($number, $boolean)).typeName).toBe('(number | boolean)[]');
     });
 
-    test('number | null | number === number | null', () => {
+    test('number | null | number => number | null', () => {
       expect($union($number, $const(null), $number).typeName).toBe('number | null');
     });
 
-    test('never | string === string', () => {
+    test('never | string => string', () => {
       expect($union($never, $string).typeName).toBe('string');
     });
 
-    test('never | never === never', () => {
+    test('never | never => never', () => {
       expect($union($never, $never).typeName).toBe('never');
     });
 
-    test('number | (number | null) === number | null', () => {
+    test('number | (number | null) => number | null', () => {
       expect($union($number, $union($number, $null)).typeName).toBe('number | null')
     });
 
-    test('(string | string)[] === string[]', () => {
+    test('undefined | null | {} | boolean | number | string => string | number | boolean | {} | null | undefined', () => {
+      expect($union($undefined, $null, $object({}), $boolean, $number, $string).typeName)
+        .toBe('string | number | boolean | {} | null | undefined');
+    });
+
+    test('null | "hoge" | boolean => boolean | "hoge" | null', () => {
+      expect($union($null, $const("hoge"), $boolean).typeName).toBe('boolean | "hoge" | null');
+    });
+
+    test('null | "hoge" | true | number => number | true | "hoge" | null', () => {
+      expect($union($null, $const("hoge"), $true, $number).typeName).toBe('number | true | "hoge" | null');
+    });
+
+    test('(string | string)[] => string[]', () => {
       expect($array($union($string, $string)).typeName).toBe('string[]');
     });
 
@@ -75,11 +88,11 @@ describe('Constraint', () => {
       expect($object({}).typeName).toBe('{}')
     });
 
-    test('{ "a": number; "b": true | string; }', () => {
+    test('{ "a": number; "b": string | true; }', () => {
       expect($object({
         a: $number,
-        b: $union($const(true), $string)
-      }).typeName).toBe('{ "a": number; "b": true | string; }')
+        b: $union($string, $true)
+      }).typeName).toBe('{ "a": number; "b": string | true; }')
     });
   });
 

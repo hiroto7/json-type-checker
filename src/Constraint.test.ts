@@ -59,6 +59,10 @@ describe('Constraint', () => {
       expect($union($never, $never).typeName).toBe('never');
     });
 
+    test('number | (number | null) === number | null', () => {
+      expect($union($number, $union($number, $null)).typeName).toBe('number | null')
+    });
+
     test('(string | string)[] === string[]', () => {
       expect($array($union($string, $string)).typeName).toBe('string[]');
     });

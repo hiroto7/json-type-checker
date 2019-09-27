@@ -137,7 +137,11 @@ export class UnionConstraint<CS extends readonly Constraint[]> implements Constr
 export const $union = <CS extends readonly Constraint[]>(...children: CS): NeverConstraint | CS[0] | UnionConstraint<CS> => {
   const map: Map<string, Constraint> = new Map();
   for (const child of children) {
-    if (!(child instanceof NeverConstraint)) {
+    if (child instanceof UnionConstraint) {
+      for (const childChild of child.children()) {
+        map.set(childChild.typeName, childChild);
+      }
+    } else if (!(child instanceof NeverConstraint)) {
       map.set(child.typeName, child);
     }
   }

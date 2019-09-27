@@ -200,6 +200,13 @@ describe('$union()', () => {
     test('number | (number | null) => number | null', () => {
       expect($union($number, $union($number, $null)).typeName).toBe('number | null')
     });
+
+    test('(string | boolean) | (boolean | number) | (number | string) => string | number | boolean', () => {
+      expect($union(
+        $union($string, $boolean),
+        $union($boolean, $number),
+        $union($number, $string)).typeName).toBe('string | number | boolean');
+    });
   });
 
   describe('型の出現順序', () => {

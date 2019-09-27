@@ -1,5 +1,5 @@
-import Constraint, { $array, $boolean, $const, $false, $never, $null, $number, $object, $string, $true, $undefined, $union } from "./Constraint";
 import CheckerError from "./CheckerError";
+import Constraint, { $array, $boolean, $const, $false, $never, $null, $number, $object, $string, $true, $undefined, $union } from "./Constraint";
 
 describe('Constraint', () => {
   describe('Constraint.typeName', () => {
@@ -7,15 +7,15 @@ describe('Constraint', () => {
       ['boolean', $boolean],
       ['number', $number],
       ['string', $string],
-      ['null', $const(null)],
-      ['undefined', $const(undefined)],
-      ['true', $const(true)],
+      ['null', $null],
+      ['undefined', $undefined],
+      ['true', $true],
       ['1', $const(1)],
       ['"hoge"', $const('hoge')],
       ['string | number', $union($string, $number)],
       ['number[]', $array($number)],
       ['(number | boolean)[]', $array($union($number, $boolean))],
-      ['[boolean, number, string, null, undefined]', $object([$boolean, $number, $string, $const(null), $const(undefined)])],
+      ['[boolean, number, string, null, undefined]', $object([$boolean, $number, $string, $null, $undefined])],
       ['{}', $object({})],
       ['{ "a": number; "b": string | true; }', $object({
         a: $number,
@@ -175,7 +175,7 @@ describe('$union()', () => {
   describe('型の消去', () => {
     describe('2回以上出現した型は消去される', () => {
       test('number | null | number => number | null', () => {
-        expect($union($number, $const(null), $number).typeName).toBe('number | null');
+        expect($union($number, $null, $number).typeName).toBe('number | null');
       });
 
       test('(string | string)[] => string[]', () => {

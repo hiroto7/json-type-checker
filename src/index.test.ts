@@ -1,6 +1,6 @@
 import CheckerError from "./CheckerError";
 import Constraint from "./Constraint";
-import wrap, { $boolean, $number, $object, $union } from "./index";
+import wrap, { $array, $boolean, $number, $object, $union } from "./index";
 
 describe('wrap()', () => {
   describe('wrap(...).a', () => {
@@ -37,7 +37,7 @@ describe('wrap()', () => {
     }
 
     describe(
-      `'value.a' に対応する制約が存在しない場合、 'wrap(...).a' を参照したときにその値を返す`,
+      `'value.a' に対応する制約が存在しない場合、 'wrap(...).a' を参照したときにその値を必ず返す`,
       () => {
         const constraint = $object({ a: $number });
         const table: [{ a: number, b: unknown }, unknown][] = [
@@ -79,6 +79,40 @@ describe('wrap()', () => {
             expect(() => { wrapped.a.b }).toThrow(CheckerError);
           });
       });
+  });
+
+  describe('wrap(..., $array(...))[1]', () => {
+    {
+      const table: [string, Constraint][] = ([
+        $array($number),
+        $array($union($boolean, $number)),
+        $union($array($boolean), $array($number)),
+      ] as const).map((constraint) => [constraint.typeName, constraint]);
+
+      describe(
+        `'value' が期待されている型である場合、 'wrap(...)[1]' を参照したときにその値を返す`,
+        () => {
+          test.each(table)(
+            `型 '%s' が期待されているとき、 'value' が '[0, 1, 4, 9]' であれば 'wrap(...)[1]' を参照したときに '1' を返す`,
+            (_, constraint) => {
+              const wrapped = wrap([0, 1, 4, 9], constraint) as unknown[];
+              expect(wrapped[1]).toBe(1);
+            }
+          );
+        });
+
+      describe(
+        `'value' および 'value[1]' が期待されている型でない場合、 'wrap(...)[1]' を参照したときに 'CheckerError' を投げる`,
+        () => {
+          test.each(table)(
+            `型 '%s' が期待されているとき、 'value' が '["h", "o", "g", "e"]' であれば 'wrap(...)[1]' を参照したときに 'CheckerError' を投げる`,
+            (_, constraint) => {
+              const wrapped = wrap(["h", "o", "g", "e"], constraint) as unknown[];
+              expect(() => { wrapped[1] }).toThrow(CheckerError);
+            }
+          );
+        });
+    }
   });
 
   describe('同一のオブジェクトに対し同一の Proxy を返す', () => {

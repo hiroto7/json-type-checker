@@ -43,7 +43,7 @@ describe('Constraint', () => {
       expect($array($number).typeName).toBe('number[]');
     });
 
-    test('(number | string)[]', () => {
+    test('(boolean | number)[]', () => {
       expect($array($union($boolean, $number)).typeName).toBe('(boolean | number)[]');
     });
 

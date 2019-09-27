@@ -1,6 +1,6 @@
 import * as webpack from 'webpack';
 
-export default {
+const configuration: webpack.Configuration = {
     mode: 'development',
     entry: './src/index.ts',
     devtool: 'source-map',
@@ -16,4 +16,6 @@ export default {
     resolve: {
         extensions: ['.tsx', '.ts', '.js']
     }
-} as webpack.Configuration;
+};
+
+export default configuration;

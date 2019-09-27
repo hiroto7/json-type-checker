@@ -1,135 +1,110 @@
 import CheckerError from "./CheckerError";
-import wrap, { $boolean, $number, $object, $string, $union } from "./index";
+import Constraint from "./Constraint";
+import wrap, { $boolean, $number, $object, $union } from "./index";
 
 describe('wrap()', () => {
+  describe('wrap(...).a', () => {
+    {
+      const table: [string, Constraint][] = ([
+        $object({ a: $number }),
+        $object({ a: $union($boolean, $number) }),
+        $union($object({ a: $boolean }), $object({ a: $number })),
+      ] as const).map((constraint) => [constraint.typeName, constraint]);
 
-  describe('制約で未定義のプロパティを参照した場合、その値を返す', () => {
-    const constraint = $object({ a: $number });
+      describe(
+        `'value' が期待されている型である場合、 'wrap(...).a' を参照したときにその値を返す`,
+        () => {
+          test.each(table)(
+            `型 '%s' が期待されているとき、 'value' が '{ "a": 1 }' であれば 'wrap(...).a' を参照したときに '1' を返す`,
+            (_, constraint) => {
+              const wrapped = wrap({ a: 1 }, constraint) as { a: unknown };
+              expect(wrapped.a).toBe(1);
+            }
+          );
+        });
 
-    test(`制約で未定義のプロパティを参照し、値が '1' であればその値を返す`, () => {
-      const json = { a: 1, b: 2 } as const;
-      const wrapped = wrap(json, constraint);
-      expect((wrapped as typeof json).b).toBe(2);
-    });
+      describe(
+        `'value' および 'value.a' が期待されている型でない場合、 'wrap(...).a' を参照したときに 'CheckerError' を投げる`,
+        () => {
+          test.each(table)(
+            `型 '%s' が期待されているとき、 'value' が '{ "a": "hoge" }' であれば 'wrap(...).a' を参照したときに 'CheckerError' を投げる`,
+            (_, constraint) => {
+              const wrapped = wrap({ a: 'hoge' }, constraint) as { a: unknown };
+              expect(() => { wrapped.a }).toThrow(CheckerError);
+            }
+          );
+        });
+    }
 
-    test(`制約で未定義のプロパティを参照し、値が '{}' であればその値を返す`, () => {
-      const json = { a: 1, b: {} } as const;
-      const wrapped = wrap(json, constraint);
-      expect((wrapped as typeof json).b).toEqual({});
-    });
+    describe(
+      `'value.a' に対応する制約が存在しない場合、 'wrap(...).a' を参照したときにその値を返す`,
+      () => {
+        const constraint = $object({ a: $number });
+        const table: [{ a: number, b: unknown }, unknown][] = [
+          [{ a: 1, b: 2 }, 2],
+          [{ a: 1, b: {} }, {}],
+        ]
+        test.each(table)(
+          `'value.a' に対応する制約が存在しないとき、 'value' が '%p' であれば 'wrap(...).a' を参照したときに '%p' を返す`,
+          (value0, value1) => {
+            const wrapped = wrap(value0, constraint) as any;
+            expect(wrapped.b).toEqual(value1);
+          }
+        )
+      }
+    );
   });
 
-  describe('オブジェクト型のアサーション', () => {
+  describe('wrap(...).a.b', () => {
+    const constraint = $object({ a: $object({ b: $number }) });
 
-    test('オブジェクト型が期待されているとき、プロパティが存在しなければ CheckerError を投げる', () => {
-      const wrapped = wrap({ b: 2 } as any, $object({ a: $object({}) }));
-      expect(() => { wrapped.a }).toThrow(CheckerError);
-    });
-
-    describe('.a.b に関して', () => {
-      const json = { a: { b: 1 } } as const;
-
-      test('型が正しければその値を返す', () => {
-        const wrapped = wrap(json, $object({
-          a: $object({
-            b: $number
-          })
-        }));
-        expect(wrapped.a.b).toBe(1);
+    describe(
+      `'value' が期待されている型である場合、 'wrap(...).a.b' を参照したときにその値を返す`,
+      () => {
+        test(
+          `型 '${constraint.typeName}' が期待されているとき、 'value' が '{ "a": { "b": 1 } }' であれば 'wrap(...).a.b' を参照したときに '1' を返す`,
+          () => {
+            const wrapped = wrap({ a: { b: 1 } }, constraint);
+            expect(wrapped.a.b).toBe(1);
+          });
       });
 
-      test('型が誤っていれば CheckerError をスローする', () => {
-        const wrapped = wrap(json as any, $object({
-          a: $object({
-            b: $string
-          })
-        }));
-        expect(() => { wrapped.a.b }).toThrow(CheckerError);
+    describe(
+      `'value' および 'value.a.b が期待されている型でない場合、 'wrap(...).a.b' を参照したときに'CheckerError' を投げる`,
+      () => {
+        test(
+          `型 '${constraint.typeName}' が期待されているとき、 'value' が '{ "a": { "b": "hoge" } }' であれば 'wrap(...).a.b' を参照したときに 'CheckerError' を投げる`,
+          () => {
+            const wrapped = wrap({ a: { b: 'hoge' } } as unknown as { a: { b: number } }, constraint);
+            expect(() => { wrapped.a.b }).toThrow(CheckerError);
+          });
       });
-    });
+  });
 
-    describe('.a.b.c に関して', () => {
-      const json = { a: { b: { c: 1 } } } as const;
-
-      test('型が正しければその値を返す', () => {
-        const wrapped = wrap(json, $object({
-          a: $object({
-            b: $object({
-              c: $number
-            })
-          })
-        }));
-        expect(wrapped.a.b.c).toBe(1);
-      });
-
-      test('型が誤っていれば CheckerError をスローする', () => {
-        const wrapped = wrap(json as any, $object({
-          a: $object({
-            b: $object({
-              c: $string
-            })
-          })
-        }));
-        expect(() => { wrapped.a.b.c }).toThrow(CheckerError);
-      });
-    });
-
-    describe('同一のオブジェクトに対し同一の Proxy を返す', () => {
-      const a = { b: 1 } as const;
-      const json = { a, c: { a } };
-      const wrapped = wrap(json, $object({
-        a: $object({ b: $number }),
-        c: $object({
-          a: $object({
-            b: $number
-          })
+  describe('同一のオブジェクトに対し同一の Proxy を返す', () => {
+    const a = { b: 1 } as const;
+    const json = { a, c: { a } };
+    const wrapped = wrap(json, $object({
+      a: $object({ b: $number }),
+      c: $object({
+        a: $object({
+          b: $number
         })
-      }));
-
-      describe('同一のプロパティに対し同一の Proxy を返す', () => {
-        test('.a に対して', () => {
-          expect(wrapped.a).toBe(wrapped.a);
-        });
-
-        test('.c.a に対して', () => {
-          expect(wrapped.c.a).toBe(wrapped.c.a);
-        });
-      });
-
-      test('異なるプロパティにセットされた同一のオブジェクトに対し同一の Proxy を返す', () => {
-        expect(wrapped.c.a).toBe(wrapped.a);
       })
-    });
+    }));
 
-  });
-
-  describe('ユニオン型のアサーション', () => {
-    describe(`型 'boolean | number' が期待されているとき`, () => {
-      const constraint = $object({ a: $union($boolean, $number) });
-
-      test(`値が 'true' であればその値を返す`, () => {
-        const wrapped = wrap({ a: true }, constraint);
-        expect(wrapped.a).toBe(true);
+    describe('同一のプロパティに対し同一の Proxy を返す', () => {
+      test('.a に対して', () => {
+        expect(wrapped.a).toBe(wrapped.a);
       });
 
-      test(`値が '"hoge"' であれば CheckerError を投げる`, () => {
-        const wrapped = wrap({ a: 'hoge' } as any, constraint);
-        expect(() => { wrapped.a }).toThrow(CheckerError);
+      test('.c.a に対して', () => {
+        expect(wrapped.c.a).toBe(wrapped.c.a);
       });
     });
 
-    describe(`型 '{ a: boolean } | { a: number }' が期待されているとき`, () => {
-      const constraint = $union($object({ a: $boolean }), $object({ a: $number }));
-
-      test(`.a の値が 'true' であればその値を返す`, () => {
-        const wrapped = wrap({ a: true }, constraint);
-        expect(wrapped.a).toBe(true);
-      });
-
-      test(`.a の値が '"hoge"' であれば CheckerError を投げる`, () => {
-        const wrapped = wrap({ a: 'hoge' } as any, constraint);
-        expect(() => { wrapped.a }).toThrow(CheckerError);
-      });
-    });
+    test('異なるプロパティにセットされた同一のオブジェクトに対し同一の Proxy を返す', () => {
+      expect(wrapped.c.a).toBe(wrapped.a);
+    })
   });
 });

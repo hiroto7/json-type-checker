@@ -115,7 +115,7 @@ describe('wrap()', () => {
     }
 
     describe(
-      `制約が配列である場合、自然数以外のインデックスで 'wrap(...)' のプロパティにアクセスしたときにその値を必ず返す`,
+      `制約が配列型である場合、自然数以外のインデックスで 'wrap(...)' のプロパティにアクセスしたときにその値を必ず返す`,
       () => {
         const constraint = $array($string);
         const table: [unknown, number | string, string[]][] = [-Infinity, -2.5, -2, 2.5, Infinity, NaN, 'hoge'].map(property => {
@@ -123,7 +123,7 @@ describe('wrap()', () => {
           return [source, property, Object.assign([], source)];
         });
         test.each(table)(
-          `制約が配列であるとき、 'value' が 'Object.assign([], %p)' であれば 'wrap(...)[%p]' にアクセスしたときに '1' を必ず返す`,
+          `制約が配列型であるとき、 'value' が 'Object.assign([], %p)' であれば 'wrap(...)[%p]' にアクセスしたときに '1' を必ず返す`,
           (_, property, value) => {
             const wrapped = wrap(value, constraint) as string[] & { [x: string]: unknown };
             expect(wrapped[property]).toEqual(1);

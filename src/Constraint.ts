@@ -104,10 +104,11 @@ export class ArrayConstraint<C extends Constraint> implements Constraint {
   getChildByProperty(property: string | number | symbol): C | null {
     if (typeof property === 'symbol') {
       return null;
-    } else if (typeof property === 'string') {
-      return Number.isInteger(Number.parseFloat(property)) ? this.child : null;
     } else {
-      return Number.isInteger(property) ? this.child : null;
+      if (typeof property === 'string') {
+        property = Number.parseFloat(property);
+      }
+      return Number.isInteger(property) && property >= 0 ? this.child : null;
     }
   }
 }

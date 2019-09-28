@@ -1,6 +1,6 @@
 import CheckerError from "./CheckerError";
 import Constraint from "./Constraint";
-import wrap, { $array, $boolean, $number, $object, $union } from "./index";
+import wrap, { $array, $boolean, $number, $object, $string, $union } from "./index";
 
 describe('wrap()', () => {
   describe('wrap(...).a', () => {
@@ -39,16 +39,16 @@ describe('wrap()', () => {
     describe(
       `'value.a' に対応する制約が存在しない場合、 'wrap(...).a' を参照したときにその値を必ず返す`,
       () => {
-        const constraint = $object({ a: $number });
-        const table: [{ a: number, b: unknown }, unknown][] = [
-          [{ a: 1, b: 2 }, 2],
-          [{ a: 1, b: {} }, {}],
+        const constraint = $object({ b: $number });
+        const table: [{ a: unknown, b: number }, unknown][] = [
+          [{ a: 2, b: 1 }, 2],
+          [{ a: {}, b: 1 }, {}],
         ]
         test.each(table)(
-          `'value.a' に対応する制約が存在しないとき、 'value' が '%p' であれば 'wrap(...).a' を参照したときに '%p' を返す`,
+          `'value.a' に対応する制約が存在しないとき、 'value' が '%p' であれば 'wrap(...).a' を参照したときに '%p' を必ず返す`,
           (value0, value1) => {
-            const wrapped = wrap(value0, constraint) as any;
-            expect(wrapped.b).toEqual(value1);
+            const wrapped = wrap(value0, constraint) as { a: unknown, b: number };
+            expect(wrapped.a).toEqual(value1);
           }
         )
       }
@@ -81,7 +81,7 @@ describe('wrap()', () => {
       });
   });
 
-  describe('wrap(..., $array(...))[1]', () => {
+  describe('wrap(..., $array(...))[...]', () => {
     {
       const table: [string, Constraint][] = ([
         $array($number),
@@ -113,6 +113,24 @@ describe('wrap()', () => {
           );
         });
     }
+
+    describe(
+      `制約が配列である場合、自然数以外のインデックスで 'wrap(...)' のプロパティにアクセスしたときにその値を必ず返す`,
+      () => {
+        const constraint = $array($string);
+        const table: [unknown, number | string, string[]][] = [-Infinity, -2.5, -2, 2.5, Infinity, NaN, 'hoge'].map(property => {
+          const source = { [property]: 1 }
+          return [source, property, Object.assign([], source)];
+        });
+        test.each(table)(
+          `制約が配列であるとき、 'value' が 'Object.assign([], %p)' であれば 'wrap(...)[%p]' にアクセスしたときに '1' を必ず返す`,
+          (_, property, value) => {
+            const wrapped = wrap(value, constraint) as string[] & { [x: string]: unknown };
+            expect(wrapped[property]).toEqual(1);
+          }
+        );
+      }
+    );
   });
 
   describe('同一のオブジェクトに対し同一の Proxy を返す', () => {

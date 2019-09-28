@@ -133,7 +133,7 @@ describe('wrap()', () => {
     );
   });
 
-  describe('同一のオブジェクトに対し同一の Proxy を返す', () => {
+  describe('ひとつのオブジェクトに対して常に同一の Proxy を返す', () => {
     const a = { b: 1 } as const;
     const json = { a, c: { a } };
     const wrapped = wrap(json, $object({
@@ -145,18 +145,20 @@ describe('wrap()', () => {
       })
     }));
 
-    describe('同一のプロパティに対し同一の Proxy を返す', () => {
-      test('.a に対して', () => {
+    describe('ひとつのプロパティに対して常に同一の Proxy を返す', () => {
+      test(`'wrap(...).a' は常に同一の Proxy を返す`, () => {
         expect(wrapped.a).toBe(wrapped.a);
       });
 
-      test('.c.a に対して', () => {
+      test(`'wrap(...).c.a' は常に同一の Proxy を返す`, () => {
         expect(wrapped.c.a).toBe(wrapped.c.a);
       });
     });
 
-    test('異なるプロパティにセットされた同一のオブジェクトに対し同一の Proxy を返す', () => {
-      expect(wrapped.c.a).toBe(wrapped.a);
-    })
+    describe('異なるプロパティにセットされた同一のオブジェクトに対し、同一の Proxy を返す', () => {
+      test(`'value.a === value.c.a' である場合、 'wrap(...).a === wrap(...).c.a' である`, () => {
+        expect(wrapped.c.a).toBe(wrapped.a);
+      })
+    });
   });
 });

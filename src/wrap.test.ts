@@ -1,6 +1,6 @@
 import CheckerError from "./CheckerError";
-import Constraint from "./Constraint";
-import wrap, { $array, $boolean, $number, $object, $string, $union } from "./index";
+import Constraint, { $array, $boolean, $number, $object, $string, $union } from "./Constraint";
+import { wrap } from "./wrap";
 
 describe('wrap()', () => {
   describe('wrap(...).a', () => {

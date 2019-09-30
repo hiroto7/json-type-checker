@@ -5,7 +5,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "target": "es6",
-    "module": "commonjs",
-    "esModuleInterop": true
-  }
+    "declaration": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node"
+  },
+  "include": [
+    "src"
+  ]
 }

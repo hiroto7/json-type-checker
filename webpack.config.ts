@@ -8,7 +8,12 @@ const configuration: webpack.Configuration = {
         rules: [
             {
                 test: /\.tsx?$/,
-                use: 'ts-loader',
+                use: {
+                    loader: 'ts-loader',
+                    options: {
+                        configFile: 'tsconfig.umd.json'
+                    }
+                },
                 exclude: /node_modules/
             }
         ]

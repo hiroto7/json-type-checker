@@ -1,11 +1,21 @@
 {
   "name": "json-type-checker",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "unpkg": "unpkg/main.js",
   "scripts": {
     "test": "jest",
-    "build": "webpack"
+    "build": "npm run build:cjs && npm run build:esm && npm run build:umd",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:umd": "webpack"
   },
+  "files": [
+    "lib",
+    "esm",
+    "dist"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -28,7 +38,7 @@
     },
     "globals": {
       "ts-jest": {
-        "tsConfig": "tsconfig.json"
+        "tsConfig": "tsconfig.base.json"
       }
     }
   },

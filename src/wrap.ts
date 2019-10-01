@@ -14,7 +14,7 @@ type JSONType<C extends Constraint> =
   C extends NeverConstraint ? never :
   unknown;
 
-export const wrap = <C extends Constraint>(value: JSONType<C> & object, constraint: C, { jsonToProxy, pathToRoot }: {
+const wrap = <C extends Constraint>(value: JSONType<C> & object, constraint: C, { jsonToProxy, pathToRoot }: {
   readonly jsonToProxy: Map<unknown, unknown>,
   readonly pathToRoot: readonly {
     readonly property: string | number | symbol;
@@ -56,3 +56,5 @@ export const wrap = <C extends Constraint>(value: JSONType<C> & object, constrai
     }
   }
 });
+
+export default wrap;

@@ -1,5 +1,6 @@
 import prettyFormat from 'pretty-format';
-import { CheckerError1, ErrorWithChildren, CheckerError2 } from './CheckerError';
+import { CheckerError1, CheckerError2, ErrorWithChildren } from './CheckerError';
+
 interface Constraint {
   readonly constraintName: string;
   readonly typeName: string;

@@ -1,5 +1,6 @@
-import CheckerError from "./CheckerError";
-import Constraint, { $array, $boolean, $const, $false, $never, $null, $number, $object, $string, $true, $undefined, $union } from "./Constraint";
+import CheckerError from "../src/CheckerError";
+import Constraint, { $array, $boolean, $const, $false, $never, $null, $number, $object, $string, $true, $undefined, $union } from "../src/Constraint";
+import * as helpers from './helpers';
 
 describe('Constraint', () => {
   describe('Constraint.typeName', () => {
@@ -12,6 +13,7 @@ describe('Constraint', () => {
       ['true', $true],
       ['1', $const(1)],
       ['"hoge"', $const('hoge')],
+      ['never', $never],
       ['string | number', $union($string, $number)],
       ['number[]', $array($number)],
       ['(number | boolean)[]', $array($union($number, $boolean))],
@@ -78,113 +80,140 @@ describe('Constraint', () => {
       );
     });
   });
+  {
+    const table0: [string, unknown, Constraint][] = ([
+      [$string, ''],
+      [$string, 'hoge'],
+      [$const('fuga'), 'fuga'],
+      [$number, 0],
+      [$number, 1],
+      [$const(2), 2],
+      [$boolean, true],
+      [$boolean, false],
+      [$true, true],
+      [$false, false],
+      [$null, null],
+      [$undefined, undefined],
+      [$object({}), {}],
+      [$array($number), [0, 1]],
+      [$union($number, $boolean), 1],
+      [$union($number, $boolean), true],
+      [$union($null, $undefined), null],
+      [$union($null, $undefined), undefined],
+      [$union($object({}), $array($number)), {}],
+      [$union($object({}), $array($number)), [0, 1]],
+    ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
 
-  describe('Constraint.checkOnlySurface()', () => {
-    describe(`'value' が 期待されている型である場合、正常終了`, () => {
-      const table: [string, unknown, Constraint][] = ([
-        [$string, ''],
-        [$string, 'hoge'],
-        [$const('fuga'), 'fuga'],
-        [$number, 0],
-        [$number, 1],
-        [$const(2), 2],
-        [$boolean, true],
-        [$boolean, false],
-        [$true, true],
-        [$false, false],
-        [$null, null],
-        [$undefined, undefined],
-        [$object({}), {}],
-        [$array($number), [0, 1]],
-        [$union($number, $boolean), 1],
-        [$union($number, $boolean), true],
-        [$union($null, $undefined), null],
-        [$union($null, $undefined), undefined],
-        [$union($object({}), $array($number)), {}],
-        [$union($object({}), $array($number)), [0, 1]],
-      ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
+    const table1: [string, unknown, Constraint][] = ([
+      [$string, 1],
+      [$string, false],
+      [$string, null],
+      [$string, undefined],
+      [$string, {}],
+      [$const('fuga'), 'hoge'],
+      [$const('fuga'), 1],
+      [$const('fuga'), false],
+      [$const('fuga'), null],
+      [$const('fuga'), undefined],
+      [$const('fuga'), {}],
+      [$number, 'hoge'],
+      [$number, false],
+      [$number, null],
+      [$number, undefined],
+      [$number, {}],
+      [$const(2), 'hoge'],
+      [$const(2), 1],
+      [$const(2), false],
+      [$const(2), null],
+      [$const(2), undefined],
+      [$const(2), {}],
+      [$boolean, 'hoge'],
+      [$boolean, 1],
+      [$boolean, null],
+      [$boolean, undefined],
+      [$boolean, {}],
+      [$true, 'hoge'],
+      [$true, 1],
+      [$true, false],
+      [$true, null],
+      [$true, undefined],
+      [$true, {}],
+      [$null, 'hoge'],
+      [$null, 1],
+      [$null, false],
+      [$null, undefined],
+      [$null, {}],
+      [$undefined, 'hoge'],
+      [$undefined, 1],
+      [$undefined, false],
+      [$undefined, null],
+      [$undefined, {}],
+      [$object({}), 'hoge'],
+      [$object({}), 1],
+      [$object({}), false],
+      [$object({}), null],
+      [$object({}), undefined],
+      [$array($number), 'hoge'],
+      [$array($number), 1],
+      [$array($number), false],
+      [$array($number), null],
+      [$array($number), undefined],
+      [$array($number), {}],
+      [$never, 'hoge'],
+      [$never, 1],
+      [$never, false],
+      [$never, null],
+      [$never, undefined],
+      [$never, {}],
+      [$union($number, $boolean), 'hoge'],
+      [$union($null, $undefined), 'hoge'],
+      [$union($object({}), $array($number)), 'hoge'],
+    ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
 
-      test.each(table)(
-        `型 '%s' が期待されているとき、 'value' が '%p' であれば正常終了`,
-        (_, value, constraint) => {
-          constraint.checkOnlySurface(value)
-        });
+    describe('Constraint.checkOnlySurface()', () => {
+      describe(`'value' が 期待されている型である場合、正常終了`, () => {
+        test.each(table0)(
+          `型 '%s' が期待されているとき、 'value' が '%p' であれば正常終了`,
+          (_, value, constraint) => {
+            constraint.checkOnlySurface(value);
+          });
+      });
+
+      describe(`'value' が期待されている型でない場合、 'CheckerError' を投げる`, () => {
+        test.each(table1)(
+          `型 '%s' が期待されているとき、 'value' が '%p' であれば 'CheckerError' を投げる`,
+          (_, value, constraint) => {
+            expect(() => { constraint.checkOnlySurface(value) }).toThrow(CheckerError);
+          });
+      });
     });
 
-    describe(`'value' が期待されている型でない場合、 'CheckerError' を投げる`, () => {
-      const table: [string, unknown, Constraint][] = ([
-        [$string, 1],
-        [$string, false],
-        [$string, null],
-        [$string, undefined],
-        [$string, {}],
-        [$const('fuga'), 'hoge'],
-        [$const('fuga'), 1],
-        [$const('fuga'), false],
-        [$const('fuga'), null],
-        [$const('fuga'), undefined],
-        [$const('fuga'), {}],
-        [$number, 'hoge'],
-        [$number, false],
-        [$number, null],
-        [$number, undefined],
-        [$number, {}],
-        [$const(2), 'hoge'],
-        [$const(2), 1],
-        [$const(2), false],
-        [$const(2), null],
-        [$const(2), undefined],
-        [$const(2), {}],
-        [$boolean, 'hoge'],
-        [$boolean, 1],
-        [$boolean, null],
-        [$boolean, undefined],
-        [$boolean, {}],
-        [$true, 'hoge'],
-        [$true, 1],
-        [$true, false],
-        [$true, null],
-        [$true, undefined],
-        [$true, {}],
-        [$null, 'hoge'],
-        [$null, 1],
-        [$null, false],
-        [$null, undefined],
-        [$null, {}],
-        [$undefined, 'hoge'],
-        [$undefined, 1],
-        [$undefined, false],
-        [$undefined, null],
-        [$undefined, {}],
-        [$object({}), 'hoge'],
-        [$object({}), 1],
-        [$object({}), false],
-        [$object({}), null],
-        [$object({}), undefined],
-        [$array($number), 'hoge'],
-        [$array($number), 1],
-        [$array($number), false],
-        [$array($number), null],
-        [$array($number), undefined],
-        [$array($number), {}],
-        [$never, 'hoge'],
-        [$never, 1],
-        [$never, false],
-        [$never, null],
-        [$never, undefined],
-        [$never, {}],
-        [$union($number, $boolean), 'hoge'],
-        [$union($null, $undefined), 'hoge'],
-        [$union($object({}), $array($number)), 'hoge'],
-      ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
+    describe('Constraint.check()', () => {
+      describe(`'value' が 期待されている型である場合、正常終了`, () => {
+        const table2: [string, unknown, Constraint][] = helpers.table0.map(constraint => [constraint.typeName, { a: 1 }, constraint]);
+        const row3: [string, unknown, Constraint] = [helpers.constraint1.typeName, { a: { b: 1 } }, helpers.constraint1];
+        const table4: [string, unknown, Constraint][] = helpers.table2.map(constraint => [constraint.typeName, [0, 1, 4, 9], constraint]);
 
-      test.each(table)(
-        `型 '%s' が期待されているとき、 'value' が '%p' であれば 'CheckerError' を投げる`,
-        (_, value, constraint) => {
-          expect(() => { constraint.checkOnlySurface(value) }).toThrow(CheckerError);
-        });
+        test.each([...table0, ...table2, row3, ...table4])(
+          `型 '%s' が期待されているとき、 'value' が '%p' であれば正常終了`,
+          (_, value, constraint) => {
+            constraint.check(value);
+          });
+      });
+
+      describe(`'value' が期待されている型でない場合、 'CheckerError' を投げる`, () => {
+        const table2: [string, unknown, Constraint][] = helpers.table0.map(constraint => [constraint.typeName, { a: 'hoge' }, constraint]);
+        const row3: [string, unknown, Constraint] = [helpers.constraint1.typeName, { a: { b: 'hoge' } }, helpers.constraint1];
+        const table4: [string, unknown, Constraint][] = helpers.table2.map(constraint => [constraint.typeName, ['h', 'o', 'g', 'e'], constraint]);
+
+        test.each([...table1, ...table2, row3, ...table4])(
+          `型 '%s' が期待されているとき、 'value' が '%p' であれば 'CheckerError' を投げる`,
+          (_, value, constraint) => {
+            expect(() => { constraint.check(value) }).toThrow(CheckerError);
+          });
+      });
     });
-  });
+  }
 });
 
 describe('$union()', () => {

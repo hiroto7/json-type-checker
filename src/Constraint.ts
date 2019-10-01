@@ -1,9 +1,10 @@
 import prettyFormat from 'pretty-format';
-import { CheckerError1, ErrorWithChildren } from './CheckerError';
+import { CheckerError1, ErrorWithChildren, CheckerError2 } from './CheckerError';
 interface Constraint {
   readonly constraintName: string;
   readonly typeName: string;
   readonly priority: number;
+  check(value: unknown): void;
   checkOnlySurface(value: unknown): void;
   getChildByProperty(property: string | number | symbol): Constraint | null;
 }
@@ -18,6 +19,7 @@ abstract class ConstraintWithoutChildren implements Constraint {
   abstract readonly typeName: string;
   abstract readonly priority: number;
   abstract checkOnlySurface(value: unknown): void;
+  check(value: unknown) { this.checkOnlySurface(value); }
   getChildByProperty(_: string | number | symbol) { return $never; }
 }
 
@@ -90,7 +92,20 @@ export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }>
     }
   }
   constructor(readonly obj: O) { }
-  checkOnlySurface(value: unknown) {
+  check(value: unknown) {
+    this.checkOnlySurface(value);
+    for (const [property, childConstraint] of Object.entries(this.obj) as [keyof O, O[keyof O]][]) {
+      try {
+        const childValue = Reflect.get(value, property);
+        childConstraint.check(childValue);
+      } catch (e) {
+        e = new ErrorWithChildren(new CheckerError2(property), e);
+        e = new ErrorWithChildren(new CheckerError1(value, this), e);
+        throw e;
+      }
+    }
+  }
+  checkOnlySurface(value: unknown): asserts value is object {
     if (!(value instanceof Object)) { throw new CheckerError1(value, this); }
   }
 }
@@ -107,7 +122,19 @@ export class ArrayConstraint<C extends Constraint> implements Constraint {
     }
   }
   constructor(readonly child: C) { }
-  checkOnlySurface(value: unknown) {
+  check(value: unknown) {
+    this.checkOnlySurface(value);
+    for (const [index, childValue] of value.entries()) {
+      try {
+        this.child.check(childValue);
+      } catch (e) {
+        e = new ErrorWithChildren(new CheckerError2(index), e);
+        e = new ErrorWithChildren(new CheckerError1(value, this), e);
+        throw e;
+      }
+    }
+  }
+  checkOnlySurface(value: unknown): asserts value is unknown[] {
     if (!(value instanceof Array)) { throw new CheckerError1(value, this); }
   }
   getChildByProperty(property: string | number | symbol): C | null {
@@ -130,18 +157,29 @@ export class UnionConstraint<CS extends readonly Constraint[]> implements Constr
   get typeName(): string { return this._children.map(type => type.typeName).join(' | ') }
   constructor(...children: CS) { this._children = children; }
   *children() { yield* this._children; }
-  checkOnlySurface(value: unknown) {
+  check(value: unknown) {
     const errors: Set<unknown> = new Set;
     for (const child of this.children()) {
       try {
-        child.checkOnlySurface(value);
+        child.check(value);
       } catch (e) {
-        errors.add(e);
+        if (e instanceof ErrorWithChildren && [...e.children()].length !== 0) { errors.add(e); }
         continue;
       }
       return;
     }
     throw new ErrorWithChildren(new CheckerError1(value, this), ...errors);
+  }
+  checkOnlySurface(value: unknown) {
+    for (const child of this.children()) {
+      try {
+        child.checkOnlySurface(value);
+      } catch (e) {
+        continue;
+      }
+      return;
+    }
+    throw new CheckerError1(value, this);
   }
   getChildByProperty(property: string | number | symbol): Constraint | null {
     const childChildren: Set<Constraint> = new Set;

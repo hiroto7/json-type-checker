@@ -1,13 +1,13 @@
 import prettyFormat from 'pretty-format';
-import { ErrorWithChildren, CheckerError1 } from './CheckerError';
-export interface Constraint {
+import { CheckerError1, ErrorWithChildren } from './CheckerError';
+interface Constraint {
   readonly constraintName: string;
   readonly typeName: string;
   readonly priority: number;
-  check1(value: unknown): void;
+  checkOnlySurface(value: unknown): void;
   getChildByProperty(property: string | number | symbol): Constraint | null;
 }
-export namespace Constraint {
+namespace Constraint {
   export const isConstraint =
     (obj: unknown): obj is Constraint => obj instanceof Object && 'constraintName' in obj && 'typeName' in obj;
 }
@@ -17,21 +17,30 @@ abstract class ConstraintWithoutChildren implements Constraint {
   abstract readonly constraintName: string;
   abstract readonly typeName: string;
   abstract readonly priority: number;
-  abstract check1(value: unknown): void;
+  abstract checkOnlySurface(value: unknown): void;
   getChildByProperty(_: string | number | symbol) { return $never; }
 }
 
 abstract class StringOrNumberOrBooleanConstraint<ConstraintName extends 'string' | 'number' | 'boolean'> extends ConstraintWithoutChildren {
-  constructor(readonly constraintName: ConstraintName, readonly priority: number) { super(); }
+  constructor(readonly constraintName: ConstraintName) { super(); }
   get typeName(): ConstraintName { return this.constraintName; }
-  check1(value: unknown) {
+  checkOnlySurface(value: unknown) {
     if (typeof value !== this.constraintName) { throw new CheckerError1(value, this); }
   }
 }
 
-export class StringConstraint extends StringOrNumberOrBooleanConstraint<'string'> { constructor() { super('string', 1); } }
-export class NumberConstraint extends StringOrNumberOrBooleanConstraint<'number'> { constructor() { super('number', 2); } }
-export class BooleanConstraint extends StringOrNumberOrBooleanConstraint<'boolean'> { constructor() { super('boolean', 3); } }
+export class StringConstraint extends StringOrNumberOrBooleanConstraint<'string'> {
+  readonly priority = 1;
+  constructor() { super('string'); }
+}
+export class NumberConstraint extends StringOrNumberOrBooleanConstraint<'number'> {
+  readonly priority = 2;
+  constructor() { super('number'); }
+}
+export class BooleanConstraint extends StringOrNumberOrBooleanConstraint<'boolean'> {
+  readonly priority = 3;
+  constructor() { super('boolean'); }
+}
 
 export const $number = new NumberConstraint;
 export const $string = new StringConstraint;
@@ -47,7 +56,7 @@ export class ConstantConstraint<V extends string | number | boolean | null | und
   readonly constraintName = 'constant';
   get typeName(): string { return prettyFormat(this.value); }
   constructor(readonly value: V) { super(); }
-  check1(value: unknown) {
+  checkOnlySurface(value: unknown) {
     if (value !== this.value) { throw new CheckerError1(value, this); }
   }
 }
@@ -68,7 +77,7 @@ export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }>
     }
   }
   readonly constraintName = 'object';
-  readonly priority: number = 6;
+  readonly priority = 6;
   get typeName(): string {
     if (Array.isArray(this.obj)) {
       return `[${this.obj.map((value: Constraint) => value.typeName).join(', ')}]`
@@ -81,7 +90,7 @@ export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }>
     }
   }
   constructor(readonly obj: O) { }
-  check1(value: unknown) {
+  checkOnlySurface(value: unknown) {
     if (!(value instanceof Object)) { throw new CheckerError1(value, this); }
   }
 }
@@ -89,7 +98,7 @@ export const $object = <O extends object & { [P in keyof O]: Constraint }>(obj: 
 
 export class ArrayConstraint<C extends Constraint> implements Constraint {
   readonly constraintName = 'array';
-  readonly priority: number = 6;
+  readonly priority = 6;
   get typeName(): string {
     if (this.child instanceof UnionConstraint) {
       return `(${this.child.typeName})[]`
@@ -98,8 +107,8 @@ export class ArrayConstraint<C extends Constraint> implements Constraint {
     }
   }
   constructor(readonly child: C) { }
-  check1(value: unknown) {
-    if (!(value instanceof Array)) { throw new CheckerError1(value, this); };
+  checkOnlySurface(value: unknown) {
+    if (!(value instanceof Array)) { throw new CheckerError1(value, this); }
   }
   getChildByProperty(property: string | number | symbol): C | null {
     if (typeof property === 'symbol') {
@@ -116,16 +125,16 @@ export const $array = <C extends Constraint>(childType: C): ArrayConstraint<C> =
 
 export class UnionConstraint<CS extends readonly Constraint[]> implements Constraint {
   readonly constraintName = 'union';
-  readonly priority: number = 0;
+  readonly priority = 0;
   private readonly _children: CS;
   get typeName(): string { return this._children.map(type => type.typeName).join(' | ') }
   constructor(...children: CS) { this._children = children; }
   *children() { yield* this._children; }
-  check1(value: unknown) {
+  checkOnlySurface(value: unknown) {
     const errors: Set<unknown> = new Set;
     for (const child of this.children()) {
       try {
-        child.check1(value);
+        child.checkOnlySurface(value);
       } catch (e) {
         errors.add(e);
         continue;
@@ -166,7 +175,7 @@ export class NeverConstraint extends ConstraintWithoutChildren {
   readonly constraintName = 'never';
   readonly typeName = 'never';
   readonly priority = 0;
-  check1(value: unknown): void {
+  checkOnlySurface(value: unknown): void {
     throw new CheckerError1(value, this);
   }
 }

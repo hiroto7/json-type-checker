@@ -79,7 +79,7 @@ describe('Constraint', () => {
     });
   });
 
-  describe('Constraint.check1()', () => {
+  describe('Constraint.checkOnlySurface()', () => {
     describe(`'value' が 期待されている型である場合、正常終了`, () => {
       const table: [string, unknown, Constraint][] = ([
         [$string, ''],
@@ -107,7 +107,7 @@ describe('Constraint', () => {
       test.each(table)(
         `型 '%s' が期待されているとき、 'value' が '%p' であれば正常終了`,
         (_, value, constraint) => {
-          constraint.check1(value)
+          constraint.checkOnlySurface(value)
         });
     });
 
@@ -181,7 +181,7 @@ describe('Constraint', () => {
       test.each(table)(
         `型 '%s' が期待されているとき、 'value' が '%p' であれば 'CheckerError' を投げる`,
         (_, value, constraint) => {
-          expect(() => { constraint.check1(value) }).toThrow(CheckerError);
+          expect(() => { constraint.checkOnlySurface(value) }).toThrow(CheckerError);
         });
     });
   });

@@ -30,7 +30,7 @@ const wrap = <C extends Constraint>(value: JSONType<C> & object, constraint: C, 
       return targetChild;
     } else {
       try {
-        constraintChild.check1(targetChild);
+        constraintChild.checkOnlySurface(targetChild);
 
         if (targetChild instanceof Object) {
           if (!jsonToProxy.has(targetChild)) {

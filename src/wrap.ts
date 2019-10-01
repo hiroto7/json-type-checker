@@ -1,27 +1,27 @@
 import { CheckerError1, CheckerError2, ErrorWithChildren } from "./CheckerError";
 import Constraint, { ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint } from "./Constraint";
 
-type JSONType<C extends Constraint> =
+type Expected<C extends Constraint> =
   C extends NumberConstraint ? number :
   C extends StringConstraint ? string :
   C extends BooleanConstraint ? boolean :
-  C extends ArrayConstraint<infer D> ? { 0: JSONType<D>[] }[D extends D ? 0 : never] :
+  C extends ArrayConstraint<infer D> ? { 0: Expected<D>[] }[D extends D ? 0 : never] :
   C extends UnionConstraint<readonly (infer CS & Constraint)[]> ? (
-    CS extends Constraint ? { 0: JSONType<CS> }[C extends C ? 0 : never] :
+    CS extends Constraint ? { 0: Expected<CS> }[C extends C ? 0 : never] :
     never) :
-  C extends ObjectConstraint<infer D> ? { [P in (number | string) & keyof D]: JSONType<D[P]> } :
+  C extends ObjectConstraint<infer D> ? { [P in (number | string) & keyof D]: Expected<D[P]> } :
   C extends ConstantConstraint<infer D> ? D :
   C extends NeverConstraint ? never :
   unknown;
 
-const wrap = <C extends Constraint>(value: JSONType<C> & object, constraint: C, { jsonToProxy, pathToRoot }: {
+const wrap = <C extends Constraint>(value: Expected<C> & object, constraint: C, { jsonToProxy, pathToRoot }: {
   readonly jsonToProxy: Map<unknown, unknown>,
   readonly pathToRoot: readonly {
     readonly property: string | number | symbol;
     readonly value: unknown;
     readonly constraint: Constraint;
   }[]
-} = { jsonToProxy: new Map, pathToRoot: [] }): JSONType<C> => new Proxy(value, {
+} = { jsonToProxy: new Map, pathToRoot: [] }): Expected<C> => new Proxy(value, {
   get(target, property: string | number | symbol): unknown {
     const targetChild: unknown = Reflect.get(target, property);
     const constraintChild = constraint.getChildByProperty(property);

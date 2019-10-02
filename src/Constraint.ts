@@ -6,7 +6,8 @@ interface Constraint {
   readonly constraintName: string;
   readonly typeName: string;
   readonly priority: number;
-  isCompatible(value: unknown): value is ExpectedType<this>;
+  // isCompatible(value: unknown): value is ExpectedType<this>;
+  isCompatible(value: unknown): boolean;
   check(value: unknown): void;
   checkOnlySurface(value: unknown): void;
   getChildByProperty(property: string | number | symbol): Constraint | null;

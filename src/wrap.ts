@@ -1,4 +1,4 @@
-import { CheckerError1, CheckerError2, ErrorWithChildren } from "./CheckerError";
+import CheckerError, { CheckerError1, CheckerError2, ErrorWithChildren } from "./CheckerError";
 import Constraint from "./Constraint";
 import ExpectedType from "./ExpectedType";
 
@@ -39,6 +39,7 @@ const wrap = <C extends Constraint>(value: ExpectedType<C> & object, constraint:
           e = new ErrorWithChildren(new CheckerError2(node.property), e);
           e = new ErrorWithChildren(new CheckerError1(node.value, node.constraint), e);
         }
+        e = new ErrorWithChildren(new CheckerError('Types of wrapped value are incompatible.'), e);
         throw e;
       }
     }

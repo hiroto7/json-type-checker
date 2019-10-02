@@ -80,8 +80,9 @@ describe('Constraint', () => {
       );
     });
   });
+
   {
-    const table0: [string, unknown, Constraint][] = ([
+    const table00: [string, unknown, Constraint][] = ([
       [$string, ''],
       [$string, 'hoge'],
       [$const('fuga'), 'fuga'],
@@ -104,7 +105,7 @@ describe('Constraint', () => {
       [$union($object({}), $array($number)), [0, 1]],
     ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
 
-    const table1: [string, unknown, Constraint][] = ([
+    const table01: [string, unknown, Constraint][] = ([
       [$string, 1],
       [$string, false],
       [$string, null],
@@ -172,7 +173,7 @@ describe('Constraint', () => {
 
     describe('Constraint.checkOnlySurface()', () => {
       describe(`'value' が 期待されている型である場合、正常終了`, () => {
-        test.each(table0)(
+        test.each(table00)(
           `型 '%s' が期待されているとき、 'value' が '%p' であれば正常終了`,
           (_, value, constraint) => {
             constraint.checkOnlySurface(value);
@@ -180,7 +181,7 @@ describe('Constraint', () => {
       });
 
       describe(`'value' が期待されている型でない場合、 'CheckerError' を投げる`, () => {
-        test.each(table1)(
+        test.each(table01)(
           `型 '%s' が期待されているとき、 'value' が '%p' であれば 'CheckerError' を投げる`,
           (_, value, constraint) => {
             expect(() => { constraint.checkOnlySurface(value) }).toThrow(CheckerError);
@@ -188,31 +189,51 @@ describe('Constraint', () => {
       });
     });
 
-    describe('Constraint.check()', () => {
-      describe(`'value' が 期待されている型である場合、正常終了`, () => {
-        const table2: [string, unknown, Constraint][] = helpers.table0.map(constraint => [constraint.typeName, { a: 1 }, constraint]);
-        const row3: [string, unknown, Constraint] = [helpers.constraint1.typeName, { a: { b: 1 } }, helpers.constraint1];
-        const table4: [string, unknown, Constraint][] = helpers.table2.map(constraint => [constraint.typeName, [0, 1, 4, 9], constraint]);
+    {
+      const table10: [string, unknown, Constraint][] = helpers.table0.map(constraint => [constraint.typeName, { a: 1 }, constraint]);
+      const row20: [string, unknown, Constraint] = [helpers.constraint1.typeName, { a: { b: 1 } }, helpers.constraint1];
+      const table30: [string, unknown, Constraint][] = helpers.table2.map(constraint => [constraint.typeName, [0, 1, 4, 9], constraint]);
 
-        test.each([...table0, ...table2, row3, ...table4])(
-          `型 '%s' が期待されているとき、 'value' が '%p' であれば正常終了`,
-          (_, value, constraint) => {
-            constraint.check(value);
-          });
+      const table11: [string, unknown, Constraint][] = helpers.table0.map(constraint => [constraint.typeName, { a: 'hoge' }, constraint]);
+      const row21: [string, unknown, Constraint] = [helpers.constraint1.typeName, { a: { b: 'hoge' } }, helpers.constraint1];
+      const table31: [string, unknown, Constraint][] = helpers.table2.map(constraint => [constraint.typeName, ['h', 'o', 'g', 'e'], constraint]);
+
+      describe('Constraint.check()', () => {
+        describe(`'value' が 期待されている型である場合、正常終了`, () => {
+          test.each([...table00, ...table10, row20, ...table30])(
+            `型 '%s' が期待されているとき、 'value' が '%p' であれば正常終了`,
+            (_, value, constraint) => {
+              constraint.check(value);
+            });
+        });
+
+        describe(`'value' が期待されている型でない場合、 'CheckerError' を投げる`, () => {
+          test.each([...table01, ...table11, row21, ...table31])(
+            `型 '%s' が期待されているとき、 'value' が '%p' であれば 'CheckerError' を投げる`,
+            (_, value, constraint) => {
+              expect(() => { constraint.check(value) }).toThrow(CheckerError);
+            });
+        });
       });
 
-      describe(`'value' が期待されている型でない場合、 'CheckerError' を投げる`, () => {
-        const table2: [string, unknown, Constraint][] = helpers.table0.map(constraint => [constraint.typeName, { a: 'hoge' }, constraint]);
-        const row3: [string, unknown, Constraint] = [helpers.constraint1.typeName, { a: { b: 'hoge' } }, helpers.constraint1];
-        const table4: [string, unknown, Constraint][] = helpers.table2.map(constraint => [constraint.typeName, ['h', 'o', 'g', 'e'], constraint]);
+      describe('Constraint.isCompatible()', () => {
+        describe(`'value' が期待されている型である場合、 'true' を返す`, () => {
+          test.each([...table00, ...table10, row20, ...table30])(
+            `型 '%s' が期待されているとき、 'value' が '%p' であれば 'true' を返す`,
+            (_, value, constraint) => {
+              expect(constraint.isCompatible(value)).toBe(true);
+            });
+        });
 
-        test.each([...table1, ...table2, row3, ...table4])(
-          `型 '%s' が期待されているとき、 'value' が '%p' であれば 'CheckerError' を投げる`,
-          (_, value, constraint) => {
-            expect(() => { constraint.check(value) }).toThrow(CheckerError);
-          });
+        describe(`'value' が期待されている型でない場合、 'false' を返す`, () => {
+          test.each([...table01, ...table11, row21, ...table31])(
+            `型 '%s' が期待されているとき、 'value' が '%p' であれば 'false' を返す`,
+            (_, value, constraint) => {
+              expect(constraint.isCompatible(value)).toBe(false);
+            });
+        });
       });
-    });
+    }
   }
 });
 

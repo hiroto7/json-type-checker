@@ -1,4 +1,4 @@
-import { CheckerError1, CheckerError2, ErrorWithChildren } from "./CheckerError";
+import CheckerError, { CheckerError1, CheckerError2, ErrorWithChildren } from "./CheckerError";
 import Constraint, { ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint } from "./Constraint";
 
 type Expected<C extends Constraint> =
@@ -51,6 +51,7 @@ const wrap = <C extends Constraint>(value: Expected<C> & object, constraint: C, 
           e = new ErrorWithChildren(new CheckerError2(node.property), e);
           e = new ErrorWithChildren(new CheckerError1(node.value, node.constraint), e);
         }
+        e = new ErrorWithChildren(new CheckerError('Types of wrapped value are incompatible.'), e);
         throw e;
       }
     }

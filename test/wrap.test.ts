@@ -1,15 +1,12 @@
-import CheckerError from "./CheckerError";
-import Constraint, { $array, $boolean, $number, $object, $string, $union } from "./Constraint";
-import wrap from "./wrap";
+import CheckerError from "../src/CheckerError";
+import Constraint, { $array, $number, $object, $string } from "../src/Constraint";
+import wrap from "../src/wrap";
+import * as helpers from './helpers';
 
 describe('wrap()', () => {
   describe('wrap(...).a', () => {
     {
-      const table: [string, Constraint][] = ([
-        $object({ a: $number }),
-        $object({ a: $union($boolean, $number) }),
-        $union($object({ a: $boolean }), $object({ a: $number })),
-      ] as const).map((constraint) => [constraint.typeName, constraint]);
+      const table: [string, Constraint][] = helpers.table0.map((constraint) => [constraint.typeName, constraint]);
 
       describe(
         `'value' が期待されている型である場合、 'wrap(...).a' を参照したときにその値を返す`,
@@ -56,7 +53,7 @@ describe('wrap()', () => {
   });
 
   describe('wrap(...).a.b', () => {
-    const constraint = $object({ a: $object({ b: $number }) });
+    const constraint = helpers.constraint1;
 
     describe(
       `'value' が期待されている型である場合、 'wrap(...).a.b' を参照したときにその値を返す`,
@@ -83,11 +80,7 @@ describe('wrap()', () => {
 
   describe('wrap(..., $array(...))[...]', () => {
     {
-      const table: [string, Constraint][] = ([
-        $array($number),
-        $array($union($boolean, $number)),
-        $union($array($boolean), $array($number)),
-      ] as const).map((constraint) => [constraint.typeName, constraint]);
+      const table: [string, Constraint][] = helpers.table2.map((constraint) => [constraint.typeName, constraint]);
 
       describe(
         `'value' が期待されている型である場合、 'wrap(...)[1]' を参照したときにその値を返す`,

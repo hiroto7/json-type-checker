@@ -1,10 +1,12 @@
 import prettyFormat from 'pretty-format';
 import { CheckerError1, CheckerError2, ErrorWithChildren } from './CheckerError';
+import ExpectedType from './ExpectedType';
 
 interface Constraint {
   readonly constraintName: string;
   readonly typeName: string;
   readonly priority: number;
+  isCompatible(value: unknown): value is ExpectedType<this>;
   check(value: unknown): void;
   checkOnlySurface(value: unknown): void;
   getChildByProperty(property: string | number | symbol): Constraint | null;
@@ -15,11 +17,24 @@ namespace Constraint {
 }
 export default Constraint;
 
-abstract class ConstraintWithoutChildren implements Constraint {
+abstract class AbstractConstraint implements Constraint {
   abstract readonly constraintName: string;
   abstract readonly typeName: string;
   abstract readonly priority: number;
+  abstract check(value: unknown): void;
   abstract checkOnlySurface(value: unknown): void;
+  abstract getChildByProperty(property: string | number | symbol): Constraint | null;
+  isCompatible(value: unknown): value is ExpectedType<this> {
+    try {
+      this.check(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+abstract class ConstraintWithoutChildren extends AbstractConstraint {
   check(value: unknown) { this.checkOnlySurface(value); }
   getChildByProperty(_: string | number | symbol) { return $never; }
 }
@@ -71,7 +86,7 @@ export const $false = $const(false);
 export const $null = $const(null);
 export const $undefined = $const(undefined);
 
-export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }> implements Constraint {
+export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }> extends AbstractConstraint {
   getChildByProperty(property: string | number | symbol): Constraint | null {
     if (((property: string | number | symbol): property is keyof O => property in this.obj)(property)) {
       return this.obj[property];
@@ -92,7 +107,7 @@ export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }>
         '{ ' + entries.map(([key, value]) => `"${key}": ${value.typeName};`).join(' ') + ' }';
     }
   }
-  constructor(readonly obj: O) { }
+  constructor(readonly obj: O) { super(); }
   check(value: unknown) {
     this.checkOnlySurface(value);
     for (const [property, childConstraint] of Object.entries(this.obj) as [keyof O, O[keyof O]][]) {
@@ -112,7 +127,7 @@ export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }>
 }
 export const $object = <O extends object & { [P in keyof O]: Constraint }>(obj: O) => new ObjectConstraint(obj);
 
-export class ArrayConstraint<C extends Constraint> implements Constraint {
+export class ArrayConstraint<C extends Constraint> extends AbstractConstraint {
   readonly constraintName = 'array';
   readonly priority = 6;
   get typeName(): string {
@@ -122,7 +137,7 @@ export class ArrayConstraint<C extends Constraint> implements Constraint {
       return `${this.child.typeName}[]`
     }
   }
-  constructor(readonly child: C) { }
+  constructor(readonly child: C) { super(); }
   check(value: unknown) {
     this.checkOnlySurface(value);
     for (const [index, childValue] of value.entries()) {
@@ -151,12 +166,12 @@ export class ArrayConstraint<C extends Constraint> implements Constraint {
 }
 export const $array = <C extends Constraint>(childType: C): ArrayConstraint<C> => new ArrayConstraint(childType);
 
-export class UnionConstraint<CS extends readonly Constraint[]> implements Constraint {
+export class UnionConstraint<CS extends readonly Constraint[]> extends AbstractConstraint {
   readonly constraintName = 'union';
   readonly priority = 0;
   private readonly _children: CS;
   get typeName(): string { return this._children.map(type => type.typeName).join(' | ') }
-  constructor(...children: CS) { this._children = children; }
+  constructor(...children: CS) { super(); this._children = children; }
   *children() { yield* this._children; }
   check(value: unknown) {
     const errors: Set<unknown> = new Set;

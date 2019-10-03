@@ -1,6 +1,6 @@
 {
-  "name": "json-type-checker",
-  "version": "1.0.0",
+  "name": "@hiroto/json-type-checker",
+  "version": "1.0.1",
   "main": "lib/index.js",
   "module": "esm/index.js",
   "unpkg": "unpkg/main.js",
@@ -45,5 +45,6 @@
   "directories": {
     "test": "test"
   },
-  "description": ""
+  "description": "",
+  "repository": "github:hiroto7/json-type-checker"
 }

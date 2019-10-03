@@ -1,6 +1,6 @@
 {
-  "name": "json-type-checker",
-  "version": "1.0.0",
+  "name": "@hiroto/json-type-checker",
+  "version": "1.0.2",
   "main": "lib/index.js",
   "module": "esm/index.js",
   "unpkg": "unpkg/main.js",
@@ -19,17 +19,19 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "pretty-format": "^24.9.0"
+  },
   "devDependencies": {
     "@types/jest": "^24.0.18",
-    "@types/node": "^12.7.5",
-    "@types/webpack": "^4.39.1",
+    "@types/node": "^12.7.9",
+    "@types/webpack": "^4.39.2",
     "jest": "^24.9.0",
-    "pretty-format": "^24.9.0",
     "ts-jest": "^24.1.0",
-    "ts-loader": "^6.1.0",
+    "ts-loader": "^6.2.0",
     "ts-node": "^8.4.1",
-    "typescript": "^3.7.0-dev.20191001",
-    "webpack": "^4.40.2",
+    "typescript": "^3.7.0-beta",
+    "webpack": "^4.41.0",
     "webpack-cli": "^3.3.9"
   },
   "jest": {
@@ -45,5 +47,6 @@
   "directories": {
     "test": "test"
   },
-  "description": ""
+  "description": "",
+  "repository": "github:hiroto7/json-type-checker"
 }

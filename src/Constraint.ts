@@ -87,7 +87,7 @@ export const $false = $const(false);
 export const $null = $const(null);
 export const $undefined = $const(undefined);
 
-export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }> extends AbstractConstraint {
+export class ObjectConstraint<O extends { [P in keyof O]: Constraint }> extends AbstractConstraint {
   getChildByProperty(property: string | number | symbol): Constraint | null {
     if (((property: string | number | symbol): property is keyof O => property in this.obj)(property)) {
       return this.obj[property];
@@ -126,7 +126,7 @@ export class ObjectConstraint<O extends object & { [P in keyof O]: Constraint }>
     if (!(value instanceof Object)) { throw new CheckerError1(value, this); }
   }
 }
-export const $object = <O extends object & { [P in keyof O]: Constraint }>(obj: O) => new ObjectConstraint(obj);
+export const $object = <O extends { [P in keyof O]: Constraint }>(obj: O) => new ObjectConstraint(obj);
 
 export class ArrayConstraint<C extends Constraint> extends AbstractConstraint {
   readonly constraintName = 'array';

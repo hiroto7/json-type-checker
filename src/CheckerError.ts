@@ -42,7 +42,7 @@ export class ErrorWithChildren extends CheckerError {
 
 export class CheckerError1 extends CheckerError {
   get message(): string {
-    return `Value '${prettyFormat(this.value, { min: true, maxDepth: 1 })}' is not type '${this.constraint.typeName}'.`;
+    return `Value '${prettyFormat(this.value, { min: true, maxDepth: 1 })}' is not type '${this.constraint.typeExpression()}'.`;
   }
   constructor(readonly value: unknown, readonly constraint: Constraint) { super(); }
 }

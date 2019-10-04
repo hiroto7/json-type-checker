@@ -1,6 +1,7 @@
 import Constraint, { ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, OptionalConstraint, StringConstraint, UnionConstraint } from "./Constraint";
 
 type ExpectedType<C extends Constraint> =
+  C extends OptionalConstraint<infer D> ? { 0: ExpectedType<D> }[C extends C ? 0 : never] :
   C extends NumberConstraint ? number :
   C extends StringConstraint ? string :
   C extends BooleanConstraint ? boolean :
@@ -17,7 +18,7 @@ type ExpectedType<C extends Constraint> =
 
 type RequiredKeys<O extends { [P in keyof O]: Constraint }> = Exclude<keyof O, OptionalKeys<O>>;
 type OptionalKeys<O extends { [P in keyof O]: Constraint }> = {
-  [P in keyof O]: O[P] extends OptionalConstraint<Constraint[]> ? P : never;
+  [P in keyof O]: O[P] extends OptionalConstraint<Constraint> ? P : never;
 }[keyof O];
 
 export default ExpectedType;

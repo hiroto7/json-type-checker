@@ -99,13 +99,17 @@ export class ObjectConstraint<O extends { [P in keyof O]: Constraint }> extends 
   readonly priority = 6;
   get typeName(): string {
     if (Array.isArray(this.obj)) {
-      return `[${this.obj.map((value: Constraint) => value.typeName).join(', ')}]`
+      return `[${this.obj.map(
+        (value: Constraint) => value.typeName + (value instanceof OptionalConstraint ? '?' : '')).join(', ')
+        }]`
     } else {
       const keys = Object.keys(this.obj) as (keyof O)[];
       const entries = Object.entries(this.obj) as [keyof O, O[keyof O]][];
       return keys.length === 0 ?
         '{}' :
-        '{ ' + entries.map(([key, value]) => `"${key}": ${value.typeName};`).join(' ') + ' }';
+        `{ ${entries.map(
+          ([key, value]) => `"${key}"${value instanceof OptionalConstraint ? '?' : ''}: ${value.typeName};`
+        ).join(' ')} }`;
     }
   }
   constructor(readonly obj: O) { super(); }
@@ -235,3 +239,18 @@ export class NeverConstraint extends ConstraintWithoutChildren {
   }
 }
 export const $never = new NeverConstraint;
+
+export class OptionalConstraint<C extends Constraint> extends AbstractConstraint {
+  readonly constraintName = 'optional';
+  get typeName(): string { return this.entity.typeName; }
+  get priority(): C['priority'] { return this.entity.priority; }
+  constructor(readonly entity: C) {
+    super();
+  }
+  check(value: unknown): void { this.entity.check(value); }
+  checkOnlySurface(value: unknown): void { this.entity.checkOnlySurface(value); }
+  getChildByProperty(property: string | number | symbol): Constraint | null {
+    return this.entity.getChildByProperty(property);
+  }
+}
+export const $optional = <C extends Constraint>(entity: C) => new OptionalConstraint($union(entity, $undefined));

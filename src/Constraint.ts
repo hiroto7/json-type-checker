@@ -3,6 +3,7 @@ import { CheckerError1, CheckerError2, ErrorWithChildren } from './CheckerError'
 import ExpectedType from './ExpectedType';
 
 interface Constraint {
+  readonly typeName: 'constraint';
   readonly constraintName: string;
   readonly priority: number;
   typeExpression(encloses?: boolean): string;
@@ -19,6 +20,7 @@ namespace Constraint {
 export default Constraint;
 
 abstract class AbstractConstraint implements Constraint {
+  readonly typeName = 'constraint';
   abstract readonly constraintName: string;
   abstract readonly priority: number;
   abstract typeExpression(encloses?: boolean): string;

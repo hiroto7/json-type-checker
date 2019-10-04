@@ -6,7 +6,7 @@ import * as helpers from './helpers';
 describe('wrap()', () => {
   describe('wrap(...).a', () => {
     {
-      const table: [string, Constraint][] = helpers.table0.map((constraint) => [constraint.typeName, constraint]);
+      const table: [string, Constraint][] = helpers.table0.map((constraint) => [constraint.typeExpression(), constraint]);
 
       describe(
         `'value' が期待されている型である場合、 'wrap(...).a' を参照したときにその値を返す`,
@@ -59,7 +59,7 @@ describe('wrap()', () => {
       `'value' が期待されている型である場合、 'wrap(...).a.b' を参照したときにその値を返す`,
       () => {
         test(
-          `型 '${constraint.typeName}' が期待されているとき、 'value' が '{ "a": { "b": 1 } }' であれば 'wrap(...).a.b' を参照したときに '1' を返す`,
+          `型 '${constraint.typeExpression()}' が期待されているとき、 'value' が '{ "a": { "b": 1 } }' であれば 'wrap(...).a.b' を参照したときに '1' を返す`,
           () => {
             const wrapped = wrap({ a: { b: 1 } }, constraint);
             expect(wrapped.a.b).toBe(1);
@@ -70,7 +70,7 @@ describe('wrap()', () => {
       `'value' および 'value.a.b が期待されている型でない場合、 'wrap(...).a.b' を参照したときに'CheckerError' を投げる`,
       () => {
         test(
-          `型 '${constraint.typeName}' が期待されているとき、 'value' が '{ "a": { "b": "hoge" } }' であれば 'wrap(...).a.b' を参照したときに 'CheckerError' を投げる`,
+          `型 '${constraint.typeExpression()}' が期待されているとき、 'value' が '{ "a": { "b": "hoge" } }' であれば 'wrap(...).a.b' を参照したときに 'CheckerError' を投げる`,
           () => {
             const wrapped = wrap({ a: { b: 'hoge' } } as unknown as { a: { b: number } }, constraint);
             expect(() => { wrapped.a.b }).toThrow(CheckerError);
@@ -80,7 +80,7 @@ describe('wrap()', () => {
 
   describe('wrap(..., $array(...))[...]', () => {
     {
-      const table: [string, Constraint][] = helpers.table2.map((constraint) => [constraint.typeName, constraint]);
+      const table: [string, Constraint][] = helpers.table2.map((constraint) => [constraint.typeExpression(), constraint]);
 
       describe(
         `'value' が期待されている型である場合、 'wrap(...)[1]' を参照したときにその値を返す`,

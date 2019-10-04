@@ -3,7 +3,7 @@ import Constraint, { $array, $boolean, $const, $false, $never, $null, $number, $
 import * as helpers from './helpers';
 
 describe('Constraint', () => {
-  describe('Constraint.typeName', () => {
+  describe('Constraint.typeExpression()', () => {
     const table: [string, Constraint][] = [
       ['boolean', $boolean],
       ['number', $number],
@@ -33,7 +33,7 @@ describe('Constraint', () => {
     ];
 
     test.each(table)('%s', (typeName: string, constraint: Constraint) => {
-      expect(constraint.typeName).toBe(typeName);
+      expect(constraint.typeExpression()).toBe(typeName);
     });
   });
 
@@ -43,7 +43,7 @@ describe('Constraint', () => {
         $string, $const('fuga'), $number, $const(2), $boolean, $true, $false, $null, $undefined,
         $union($number, $boolean),
         $union($null, $undefined)
-      ].map(constraint => [constraint.typeName, constraint]);
+      ].map(constraint => [constraint.typeExpression(), constraint]);
 
       test.each(table)(
         `型 '%s' の子プロパティは 'never' 型である`,
@@ -60,14 +60,14 @@ describe('Constraint', () => {
         [$union($object({ a: $number }), $object({ a: $boolean })), $union($number, $boolean)],
         [$union($object({ a: $null }), $object({ a: $undefined }), $string), $union($null, $undefined)]
       ];
-      const table: [string, string, Constraint][] = table0.map(([constraint, childConstraint]: [Constraint, Constraint]) => [constraint.typeName, childConstraint.typeName, constraint]);
+      const table: [string, string, Constraint][] = table0.map(([constraint, childConstraint]: [Constraint, Constraint]) => [constraint.typeExpression(), childConstraint.typeExpression(), constraint]);
 
       test.each(table)(
         `型 '%s' のプロパティ 'a' は '%s' 型である`,
         (_, childTypeName, constraint) => {
           expect(constraint.getChildByProperty('a')).not.toBeNull();
           expect(constraint.getChildByProperty('a')).not.toBeUndefined();
-          expect(constraint.getChildByProperty('a')!.typeName).toBe(childTypeName);
+          expect(constraint.getChildByProperty('a')!.typeExpression()).toBe(childTypeName);
         }
       );
     });
@@ -77,7 +77,7 @@ describe('Constraint', () => {
         $object({}),
         $union($object({ a: $number }), $object({ b: $boolean })),
         $union($object({ a: $null }), $object({ b: $undefined }), $string)
-      ].map(constraint => [constraint.typeName, constraint]);
+      ].map(constraint => [constraint.typeExpression(), constraint]);
 
       test.each(table)(
         `型 '%s' のプロパティ 'a' に関する制約は存在しない`,
@@ -110,7 +110,7 @@ describe('Constraint', () => {
       [$union($null, $undefined), undefined],
       [$union($object({}), $array($number)), {}],
       [$union($object({}), $array($number)), [0, 1]],
-    ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
+    ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeExpression(), value, constraint]);
 
     const table01: [string, unknown, Constraint][] = ([
       [$string, 1],
@@ -176,7 +176,7 @@ describe('Constraint', () => {
       [$union($number, $boolean), 'hoge'],
       [$union($null, $undefined), 'hoge'],
       [$union($object({}), $array($number)), 'hoge'],
-    ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeName, value, constraint]);
+    ] as const).map(([constraint, value]): [string, unknown, Constraint] => [constraint.typeExpression(), value, constraint]);
 
     describe('Constraint.checkOnlySurface()', () => {
       describe(`'value' が 期待されている型である場合、正常終了`, () => {
@@ -197,13 +197,13 @@ describe('Constraint', () => {
     });
 
     {
-      const table10: [string, unknown, Constraint][] = helpers.table0.map(constraint => [constraint.typeName, { a: 1 }, constraint]);
-      const row20: [string, unknown, Constraint] = [helpers.constraint1.typeName, { a: { b: 1 } }, helpers.constraint1];
-      const table30: [string, unknown, Constraint][] = helpers.table2.map(constraint => [constraint.typeName, [0, 1, 4, 9], constraint]);
+      const table10: [string, unknown, Constraint][] = helpers.table0.map(constraint => [constraint.typeExpression(), { a: 1 }, constraint]);
+      const row20: [string, unknown, Constraint] = [helpers.constraint1.typeExpression(), { a: { b: 1 } }, helpers.constraint1];
+      const table30: [string, unknown, Constraint][] = helpers.table2.map(constraint => [constraint.typeExpression(), [0, 1, 4, 9], constraint]);
 
-      const table11: [string, unknown, Constraint][] = helpers.table0.map(constraint => [constraint.typeName, { a: 'hoge' }, constraint]);
-      const row21: [string, unknown, Constraint] = [helpers.constraint1.typeName, { a: { b: 'hoge' } }, helpers.constraint1];
-      const table31: [string, unknown, Constraint][] = helpers.table2.map(constraint => [constraint.typeName, ['h', 'o', 'g', 'e'], constraint]);
+      const table11: [string, unknown, Constraint][] = helpers.table0.map(constraint => [constraint.typeExpression(), { a: 'hoge' }, constraint]);
+      const row21: [string, unknown, Constraint] = [helpers.constraint1.typeExpression(), { a: { b: 'hoge' } }, helpers.constraint1];
+      const table31: [string, unknown, Constraint][] = helpers.table2.map(constraint => [constraint.typeExpression(), ['h', 'o', 'g', 'e'], constraint]);
 
       describe('Constraint.check()', () => {
         describe(`'value' が 期待されている型である場合、正常終了`, () => {
@@ -248,52 +248,52 @@ describe('$union()', () => {
   describe('型の消去', () => {
     describe('2回以上出現した型は消去される', () => {
       test('number | null | number => number | null', () => {
-        expect($union($number, $null, $number).typeName).toBe('number | null');
+        expect($union($number, $null, $number).typeExpression()).toBe('number | null');
       });
 
       test('(string | string)[] => string[]', () => {
-        expect($array($union($string, $string)).typeName).toBe('string[]');
+        expect($array($union($string, $string)).typeExpression()).toBe('string[]');
       });
     });
 
     describe(`'never' 型は消去される`, () => {
       test('never | string => string', () => {
-        expect($union($never, $string).typeName).toBe('string');
+        expect($union($never, $string).typeExpression()).toBe('string');
       });
     });
 
     describe(`すべての型が消去された場合、 'never' 型`, () => {
       test('never | never => never', () => {
-        expect($union($never, $never).typeName).toBe('never');
+        expect($union($never, $never).typeExpression()).toBe('never');
       });
     });
   });
 
   describe('ネストされた `$union()` は展開される', () => {
     test('number | (number | null) => number | null', () => {
-      expect($union($number, $union($number, $null)).typeName).toBe('number | null')
+      expect($union($number, $union($number, $null)).typeExpression()).toBe('number | null')
     });
 
     test('(string | boolean) | (boolean | number) | (number | string) => string | number | boolean', () => {
       expect($union(
         $union($string, $boolean),
         $union($boolean, $number),
-        $union($number, $string)).typeName).toBe('string | number | boolean');
+        $union($number, $string)).typeExpression()).toBe('string | number | boolean');
     });
   });
 
   describe('型の出現順序', () => {
     test('undefined | null | {} | boolean | number | string => string | number | boolean | {} | null | undefined', () => {
-      expect($union($undefined, $null, $object({}), $boolean, $number, $string).typeName)
+      expect($union($undefined, $null, $object({}), $boolean, $number, $string).typeExpression())
         .toBe('string | number | boolean | {} | null | undefined');
     });
 
     test('null | "hoge" | boolean => boolean | "hoge" | null', () => {
-      expect($union($null, $const("hoge"), $boolean).typeName).toBe('boolean | "hoge" | null');
+      expect($union($null, $const("hoge"), $boolean).typeExpression()).toBe('boolean | "hoge" | null');
     });
 
     test('null | "hoge" | true | number => number | true | "hoge" | null', () => {
-      expect($union($null, $const("hoge"), $true, $number).typeName).toBe('number | true | "hoge" | null');
+      expect($union($null, $const("hoge"), $true, $number).typeExpression()).toBe('number | true | "hoge" | null');
     });
   });
 });

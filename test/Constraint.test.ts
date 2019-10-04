@@ -20,7 +20,7 @@ describe('Constraint', () => {
       ['[boolean, number, string, null, undefined]', $object(
         [$boolean, $number, $string, $null, $undefined]
       )],
-      ['[boolean, number, string?, null?]', $object(
+      ['[boolean, number, (string | undefined)?, (null | undefined)?]', $object(
         [$boolean, $number, $optional($string), $optional($null)]
       )],
       ['{}', $object({})],

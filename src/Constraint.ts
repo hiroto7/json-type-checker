@@ -3,6 +3,7 @@ import { CheckerError1, CheckerError2, ErrorWithChildren } from './CheckerError'
 import ExpectedType from './ExpectedType';
 
 interface Constraint {
+  readonly typeName: 'constraint';
   readonly constraintName: string;
   readonly priority: number;
   typeExpression(encloses?: boolean): string;
@@ -14,11 +15,12 @@ interface Constraint {
 }
 namespace Constraint {
   export const isConstraint =
-    (obj: unknown): obj is Constraint => obj instanceof Object && 'constraintName' in obj && 'typeName' in obj;
+    (obj: unknown): obj is Constraint => obj instanceof Object && 'typeName' in obj && obj['typeName'] === 'constraint';
 }
 export default Constraint;
 
 abstract class AbstractConstraint implements Constraint {
+  readonly typeName = 'constraint';
   abstract readonly constraintName: string;
   abstract readonly priority: number;
   abstract typeExpression(encloses?: boolean): string;
@@ -87,15 +89,15 @@ export const $false = $const(false);
 export const $null = $const(null);
 export const $undefined = $const(undefined);
 
-export class ObjectConstraint<O extends { [P in keyof O]: Constraint }> extends AbstractConstraint {
+export class ObjectConstraint<O extends { [P in keyof O]: ObjectConstraint.PropertyDescriptor<Constraint, boolean> }> extends AbstractConstraint {
   readonly constraintName = 'object';
   readonly priority = 6;
   constructor(readonly obj: O) { super(); }
   typeExpression(): string {
     if (Array.isArray(this.obj)) {
       return `[${this.obj.map(
-        (value: Constraint) =>
-          value instanceof OptionalConstraint ? `${value.typeExpression(true)}?` : value.typeExpression()).join(', ')
+        (descriptor: ObjectConstraint.PropertyDescriptor<Constraint, boolean>) =>
+          descriptor instanceof ObjectConstraint.OptionalPropertyDescriptor ? `${descriptor.value.typeExpression(true)}?` : descriptor.value.typeExpression()).join(', ')
         }]`
     } else {
       const keys = Object.keys(this.obj) as (keyof O)[];
@@ -103,16 +105,16 @@ export class ObjectConstraint<O extends { [P in keyof O]: Constraint }> extends 
       return keys.length === 0 ?
         '{}' :
         `{ ${entries.map(
-          ([key, value]) => `"${key}"${value instanceof OptionalConstraint ? '?' : ''}: ${value.typeExpression()};`
+          ([key, descriptor]) => `"${key}"${descriptor instanceof ObjectConstraint.OptionalPropertyDescriptor ? '?' : ''}: ${descriptor.value.typeExpression()};`
         ).join(' ')} }`;
     }
   }
   check(value: unknown) {
     this.checkOnlySurface(value);
-    for (const [property, childConstraint] of Object.entries(this.obj) as [keyof O, O[keyof O]][]) {
+    for (const [property, descriptor] of Object.entries(this.obj) as [keyof O, O[keyof O]][]) {
       try {
         const childValue = Reflect.get(value, property);
-        childConstraint.check(childValue);
+        descriptor.value.check(childValue);
       } catch (e) {
         e = new ErrorWithChildren(new CheckerError2(property), e);
         e = new ErrorWithChildren(new CheckerError1(value, this), e);
@@ -125,13 +127,50 @@ export class ObjectConstraint<O extends { [P in keyof O]: Constraint }> extends 
   }
   getChildByProperty(property: string | number | symbol): Constraint | null {
     if (((property: string | number | symbol): property is keyof O => property in this.obj)(property)) {
-      return this.obj[property];
+      return this.obj[property].value;
     } else {
       return null;
     }
   }
 }
-export const $object = <O extends { [P in keyof O]: Constraint }>(obj: O) => new ObjectConstraint(obj);
+export namespace ObjectConstraint {
+  export abstract class PropertyDescriptor<C extends Constraint, IsRequired extends boolean> {
+    abstract readonly isRequired: IsRequired;
+    readonly typeName = 'object-constraint-property-descriptor';
+    constructor(readonly value: C) { }
+  }
+
+  export class RequiredPropertyDescriptor<C extends Constraint> extends PropertyDescriptor<C, true>{
+    readonly isRequired = true;
+  }
+
+  export class OptionalPropertyDescriptor<C extends Constraint> extends PropertyDescriptor<C, false>{
+    readonly isRequired = false
+  }
+}
+
+export const $required = <C extends Constraint>(value: C) => new ObjectConstraint.RequiredPropertyDescriptor(value);
+export const $optional = <C extends Constraint>(value: C) => new ObjectConstraint.OptionalPropertyDescriptor($union(value, $undefined));
+
+type CorrectedObjectConstraintInit<O extends { [P in keyof O]: Constraint | ObjectConstraint.PropertyDescriptor<Constraint, boolean> }> = {
+  [P in keyof O]: O[P] extends Constraint ? ObjectConstraint.RequiredPropertyDescriptor<O[P]> : O[P] extends ObjectConstraint.PropertyDescriptor<Constraint, boolean> ? O[P] : never
+};
+export const $object = <O extends { [P in keyof O]: Constraint | ObjectConstraint.PropertyDescriptor<Constraint, boolean> }>(obj: O): ObjectConstraint<CorrectedObjectConstraintInit<O>> => {
+  if (Array.isArray(obj)) {
+    const correctedArray = obj.map((value: Constraint | ObjectConstraint.PropertyDescriptor<Constraint, boolean>) =>
+      Constraint.isConstraint(value) ? $required(value) : value
+    ) as ObjectConstraint.PropertyDescriptor<Constraint, boolean>[] & CorrectedObjectConstraintInit<O>;
+    return new ObjectConstraint(correctedArray);
+  } else {
+    const correctedObj: { [P in keyof O]: Constraint | ObjectConstraint.PropertyDescriptor<Constraint, boolean> } = { ...obj };
+    const entries = Object.entries(obj) as [keyof O, O[keyof O]][];
+    for (const [property, descriptorOrConstraint] of entries) {
+      const descriptor = Constraint.isConstraint(descriptorOrConstraint) ? $required(descriptorOrConstraint) : descriptorOrConstraint as ObjectConstraint.PropertyDescriptor<Constraint, boolean>;
+      correctedObj[property] = descriptor;
+    }
+    return new ObjectConstraint(correctedObj as CorrectedObjectConstraintInit<O>);
+  }
+}
 
 export class ArrayConstraint<C extends Constraint> extends AbstractConstraint {
   readonly constraintName = 'array';
@@ -237,18 +276,3 @@ export class NeverConstraint extends ConstraintWithoutChildren {
   }
 }
 export const $never = new NeverConstraint;
-
-export class OptionalConstraint<C extends Constraint> extends AbstractConstraint {
-  readonly constraintName = 'optional';
-  get priority(): C['priority'] { return this.entity.priority; }
-  constructor(readonly entity: C) {
-    super();
-  }
-  typeExpression(encloses?: boolean): string { return this.entity.typeExpression(encloses); }
-  check(value: unknown): void { this.entity.check(value); }
-  checkOnlySurface(value: unknown): void { this.entity.checkOnlySurface(value); }
-  getChildByProperty(property: string | number | symbol): Constraint | null {
-    return this.entity.getChildByProperty(property);
-  }
-}
-export const $optional = <C extends Constraint>(entity: C) => new OptionalConstraint($union(entity, $undefined));

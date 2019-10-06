@@ -133,6 +133,25 @@ export class ObjectConstraint<O extends { [P in keyof O]: ObjectConstraint.Prope
     }
   }
 }
+export namespace ObjectConstraint {
+  export abstract class PropertyDescriptor<C extends Constraint, IsRequired extends boolean> {
+    abstract readonly isRequired: IsRequired;
+    readonly typeName = 'object-constraint-property-descriptor';
+    constructor(readonly value: C) { }
+  }
+
+  export class RequiredPropertyDescriptor<C extends Constraint> extends PropertyDescriptor<C, true>{
+    readonly isRequired = true;
+  }
+
+  export class OptionalPropertyDescriptor<C extends Constraint> extends PropertyDescriptor<C, false>{
+    readonly isRequired = false
+  }
+}
+
+export const $required = <C extends Constraint>(value: C) => new ObjectConstraint.RequiredPropertyDescriptor(value);
+export const $optional = <C extends Constraint>(value: C) => new ObjectConstraint.OptionalPropertyDescriptor($union(value, $undefined));
+
 type CorrectedObjectConstraintInit<O extends { [P in keyof O]: Constraint | ObjectConstraint.PropertyDescriptor<Constraint, boolean> }> = {
   [P in keyof O]: O[P] extends Constraint ? ObjectConstraint.RequiredPropertyDescriptor<O[P]> : O[P] extends ObjectConstraint.PropertyDescriptor<Constraint, boolean> ? O[P] : never
 };
@@ -257,22 +276,3 @@ export class NeverConstraint extends ConstraintWithoutChildren {
   }
 }
 export const $never = new NeverConstraint;
-
-export namespace ObjectConstraint {
-  export abstract class PropertyDescriptor<C extends Constraint, IsRequired extends boolean> {
-    abstract readonly isRequired: IsRequired;
-    readonly typeName = 'object-constraint-property-descriptor';
-    constructor(readonly value: C) { }
-  }
-
-  export class RequiredPropertyDescriptor<C extends Constraint> extends PropertyDescriptor<C, true>{
-    readonly isRequired = true;
-  }
-
-  export class OptionalPropertyDescriptor<C extends Constraint> extends PropertyDescriptor<C, false>{
-    readonly isRequired = false
-  }
-}
-
-export const $required = <C extends Constraint>(value: C) => new ObjectConstraint.RequiredPropertyDescriptor(value);
-export const $optional = <C extends Constraint>(value: C) => new ObjectConstraint.OptionalPropertyDescriptor($union(value, $undefined));

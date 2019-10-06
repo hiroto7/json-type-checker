@@ -10,12 +10,15 @@ type ExpectedType<C extends Constraint> =
     never) :
   C extends ObjectConstraint<infer O> ? (
     { [P in RequiredKeys<O>]: ExpectedType<O[P]['value']> } &
-    { [P in OptionalKeys<O>]?: ExpectedType<O[P]['value']> }) :
+    { [P in OptionalKeys<O>]?: ExpectedType<O[P]['value']> }
+  ) & (O extends readonly ObjectConstraint.PropertyDescriptor<infer D, boolean>[] ? ExpectedType<D>[] : unknown) :
   C extends ConstantConstraint<infer D> ? D :
   C extends NeverConstraint ? never :
   unknown;
 
-type RequiredKeys<O extends { [P in keyof O]: ObjectConstraint.PropertyDescriptor<Constraint, boolean> }> = Exclude<keyof O, OptionalKeys<O>>;
+type RequiredKeys<O extends { [P in keyof O]: ObjectConstraint.PropertyDescriptor<Constraint, boolean> }> = {
+  [P in keyof O]: O[P] extends ObjectConstraint.RequiredPropertyDescriptor<Constraint> ? P : never;
+}[keyof O];
 type OptionalKeys<O extends { [P in keyof O]: ObjectConstraint.PropertyDescriptor<Constraint, boolean> }> = {
   [P in keyof O]: O[P] extends ObjectConstraint.OptionalPropertyDescriptor<Constraint> ? P : never;
 }[keyof O];

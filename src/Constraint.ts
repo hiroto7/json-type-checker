@@ -136,13 +136,24 @@ export class ObjectConstraint<O extends { [P in keyof O]: ObjectConstraintProper
 export const $object = <O extends { [P in keyof O]: Constraint | ObjectConstraintPropertyDescriptor<Constraint, boolean> }>(obj: O): ObjectConstraint<{
   [P in keyof O]: O[P] extends Constraint ? ObjectConstraintRequiredPropertyDescriptor<O[P]> : O[P] extends ObjectConstraintPropertyDescriptor<Constraint, boolean> ? O[P] : never
 }> => {
-  const entries = Object.entries(obj) as [keyof O, O[keyof O]][];
-  const newObj: any = {};
-  for (const [property, descriptorOrConstraint] of entries) {
-    const descriptor = Constraint.isConstraint(descriptorOrConstraint) ? $required(descriptorOrConstraint) : descriptorOrConstraint as ObjectConstraintPropertyDescriptor<Constraint, boolean>;
-    newObj[property] = descriptor;
+  if (Array.isArray(obj)) {
+    const correctedArray = obj.map((value: Constraint | ObjectConstraintPropertyDescriptor<Constraint, boolean>) =>
+      Constraint.isConstraint(value) ? $required(value) : value
+    ) as ObjectConstraintPropertyDescriptor<Constraint, boolean>[] & {
+      [P in keyof O]: O[P] extends Constraint ? ObjectConstraintRequiredPropertyDescriptor<O[P]> : O[P] extends ObjectConstraintPropertyDescriptor<Constraint, boolean> ? O[P] : never
+    };
+    return new ObjectConstraint(correctedArray);
+  } else {
+    const correctedObj: { [P in keyof O]: Constraint | ObjectConstraintPropertyDescriptor<Constraint, boolean> } = { ...obj };
+    const entries = Object.entries(obj) as [keyof O, O[keyof O]][];
+    for (const [property, descriptorOrConstraint] of entries) {
+      const descriptor = Constraint.isConstraint(descriptorOrConstraint) ? $required(descriptorOrConstraint) : descriptorOrConstraint as ObjectConstraintPropertyDescriptor<Constraint, boolean>;
+      correctedObj[property] = descriptor;
+    }
+    return new ObjectConstraint(correctedObj as {
+      [P in keyof O]: O[P] extends Constraint ? ObjectConstraintRequiredPropertyDescriptor<O[P]> : O[P] extends ObjectConstraintPropertyDescriptor<Constraint, boolean> ? O[P] : never
+    });
   }
-  return new ObjectConstraint(newObj);
 }
 
 export class ArrayConstraint<C extends Constraint> extends AbstractConstraint {

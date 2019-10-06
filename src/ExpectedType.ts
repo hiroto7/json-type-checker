@@ -1,4 +1,4 @@
-import Constraint, { ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint, ObjectConstraintOptionalPropertyDescriptor, ObjectConstraintPropertyDescriptor } from "./Constraint";
+import Constraint, { ArrayConstraint, BooleanConstraint, ConstantConstraint, NeverConstraint, NumberConstraint, ObjectConstraint, StringConstraint, UnionConstraint } from "./Constraint";
 
 type ExpectedType<C extends Constraint> =
   C extends NumberConstraint ? number :
@@ -15,9 +15,9 @@ type ExpectedType<C extends Constraint> =
   C extends NeverConstraint ? never :
   unknown;
 
-type RequiredKeys<O extends { [P in keyof O]: ObjectConstraintPropertyDescriptor<Constraint, boolean> }> = Exclude<keyof O, OptionalKeys<O>>;
-type OptionalKeys<O extends { [P in keyof O]: ObjectConstraintPropertyDescriptor<Constraint, boolean> }> = {
-  [P in keyof O]: O[P] extends ObjectConstraintOptionalPropertyDescriptor<Constraint> ? P : never;
+type RequiredKeys<O extends { [P in keyof O]: ObjectConstraint.PropertyDescriptor<Constraint, boolean> }> = Exclude<keyof O, OptionalKeys<O>>;
+type OptionalKeys<O extends { [P in keyof O]: ObjectConstraint.PropertyDescriptor<Constraint, boolean> }> = {
+  [P in keyof O]: O[P] extends ObjectConstraint.OptionalPropertyDescriptor<Constraint> ? P : never;
 }[keyof O];
 
 export default ExpectedType;

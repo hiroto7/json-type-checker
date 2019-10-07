@@ -288,7 +288,3 @@ export class NeverConstraint extends ConstraintWithoutChildren {
   }
 }
 export const $never = new NeverConstraint;
-
-$tuple(
-  $boolean, $number, $string, $null, $undefined
-).isCompatible

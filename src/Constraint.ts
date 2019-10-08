@@ -163,11 +163,10 @@ export const $object = <O extends { [P in keyof O]: DescriptorOrConstraint }>(ob
   return new ObjectConstraint(correctedObj as CorrectedObjectConstraintInit<O>);
 }
 
-export class TupleConstraint<O extends { [P in keyof O]: ConstraintWithEntries.PropertyDescriptor<Constraint, boolean> }>
-  extends ConstraintWithEntries<O & readonly ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>[]>
+export class TupleConstraint<T extends readonly ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>[], O extends { [P in keyof O]: ConstraintWithEntries.PropertyDescriptor<Constraint, boolean> }>
+  extends ConstraintWithEntries<T & O>
 {
   readonly constraintName = 'tuple';
-  constructor(...tuple: O & readonly ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>[]) { super(tuple); }
   typeExpression(): string {
     return `[${this.obj.map(
       (descriptor: ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>) =>
@@ -176,11 +175,13 @@ export class TupleConstraint<O extends { [P in keyof O]: ConstraintWithEntries.P
   }
 }
 
-export const $tuple = <O extends { [P in keyof O]: DescriptorOrConstraint }>(...tuple: O & readonly DescriptorOrConstraint[]): TupleConstraint<CorrectedObjectConstraintInit<O>> => {
+type Correct<DorC extends DescriptorOrConstraint> = DorC extends Constraint ? ConstraintWithEntries.RequiredPropertyDescriptor<DorC> : DorC extends ConstraintWithEntries.PropertyDescriptor<Constraint, boolean> ? DorC : never;
+type CorrectedTupleConstraintInit<T extends readonly DescriptorOrConstraint[]> = T extends readonly (infer DorC)[] ? (DorC extends DescriptorOrConstraint ? Correct<DorC> : never)[] : never;
+export const $tuple = <T extends readonly DescriptorOrConstraint[], O extends { [P in keyof O]: DescriptorOrConstraint }>(...tuple: T & O): TupleConstraint<CorrectedTupleConstraintInit<T>, CorrectedObjectConstraintInit<O>> => {
   const correctedTuple = tuple.map((value: DescriptorOrConstraint) =>
     Constraint.isConstraint(value) ? $required(value) : value
-  ) as CorrectedObjectConstraintInit<O> & ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>[];
-  return new TupleConstraint(...correctedTuple) as unknown as TupleConstraint<CorrectedObjectConstraintInit<O>>;
+  ) as CorrectedTupleConstraintInit<T> & CorrectedObjectConstraintInit<O>;
+  return new TupleConstraint(correctedTuple);
 }
 
 export class ArrayConstraint<C extends Constraint> extends AbstractConstraint {

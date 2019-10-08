@@ -12,13 +12,12 @@ type ExpectedType<C extends Constraint> =
     { [P in RequiredKeys<O>]: ExpectedType<O[P]['value']>; } &
     { [P in OptionalKeys<O>]?: ExpectedType<O[P]['value']>; }
   ) :
-  C extends TupleConstraint<infer T, infer O> ? (
+  C extends TupleConstraint<infer O> ? (
     { [P in RequiredKeys<O>]: ExpectedType<O[P]['value']>; } &
-    { [P in OptionalKeys<O>]?: ExpectedType<O[P]['value']>; } &
-    { length: Length<T>; }
+    { [P in OptionalKeys<O>]?: ExpectedType<O[P]['value']>; }
   ) & (
-    T extends readonly ConstraintWithEntries.PropertyDescriptor<infer D, boolean>[] ?
-    ExpectedType<D>[] :
+    O extends readonly ConstraintWithEntries.PropertyDescriptor<infer D, boolean>[] ?
+    ExpectedType<D>[] & { length: Length<O>; } :
     unknown
   ) :
   C extends ConstantConstraint<infer D> ? D :

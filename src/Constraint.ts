@@ -167,6 +167,7 @@ export class TupleConstraint<T extends readonly ConstraintWithEntries.PropertyDe
   extends ConstraintWithEntries<T & O>
 {
   readonly constraintName = 'tuple';
+  constructor(...tuple: T & O) { super(tuple); }
   typeExpression(): string {
     return `[${this.obj.map(
       (descriptor: ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>) =>
@@ -181,7 +182,7 @@ export const $tuple = <T extends readonly DescriptorOrConstraint[], O extends { 
   const correctedTuple = tuple.map((value: DescriptorOrConstraint) =>
     Constraint.isConstraint(value) ? $required(value) : value
   ) as CorrectedTupleConstraintInit<T> & CorrectedObjectConstraintInit<O>;
-  return new TupleConstraint(correctedTuple);
+  return new TupleConstraint(...correctedTuple as any);
 }
 
 export class ArrayConstraint<C extends Constraint> extends AbstractConstraint {

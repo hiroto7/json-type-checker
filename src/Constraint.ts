@@ -89,26 +89,9 @@ export const $false = $const(false);
 export const $null = $const(null);
 export const $undefined = $const(undefined);
 
-export class ObjectConstraint<O extends { [P in keyof O]: ObjectConstraint.PropertyDescriptor<Constraint, boolean> }> extends AbstractConstraint {
-  readonly constraintName = 'object';
+export abstract class ConstraintWithEntries<O extends { [P in keyof O]: ConstraintWithEntries.PropertyDescriptor<Constraint, boolean> }> extends AbstractConstraint {
   readonly priority = 6;
   constructor(readonly obj: O) { super(); }
-  typeExpression(): string {
-    if (Array.isArray(this.obj)) {
-      return `[${this.obj.map(
-        (descriptor: ObjectConstraint.PropertyDescriptor<Constraint, boolean>) =>
-          descriptor instanceof ObjectConstraint.OptionalPropertyDescriptor ? `${descriptor.value.typeExpression(true)}?` : descriptor.value.typeExpression()).join(', ')
-        }]`
-    } else {
-      const keys = Object.keys(this.obj) as (keyof O)[];
-      const entries = Object.entries(this.obj) as [keyof O, O[keyof O]][];
-      return keys.length === 0 ?
-        '{}' :
-        `{ ${entries.map(
-          ([key, descriptor]) => `"${key}"${descriptor instanceof ObjectConstraint.OptionalPropertyDescriptor ? '?' : ''}: ${descriptor.value.typeExpression()};`
-        ).join(' ')} }`;
-    }
-  }
   check(value: unknown) {
     this.checkOnlySurface(value);
     for (const [property, descriptor] of Object.entries(this.obj) as [keyof O, O[keyof O]][]) {
@@ -133,7 +116,7 @@ export class ObjectConstraint<O extends { [P in keyof O]: ObjectConstraint.Prope
     }
   }
 }
-export namespace ObjectConstraint {
+export namespace ConstraintWithEntries {
   export abstract class PropertyDescriptor<C extends Constraint, IsRequired extends boolean> {
     abstract readonly isRequired: IsRequired;
     readonly typeName = 'object-constraint-property-descriptor';
@@ -152,24 +135,52 @@ export namespace ObjectConstraint {
 export const $required = <C extends Constraint>(value: C) => new ObjectConstraint.RequiredPropertyDescriptor(value);
 export const $optional = <C extends Constraint>(value: C) => new ObjectConstraint.OptionalPropertyDescriptor($union(value, $undefined));
 
-type CorrectedObjectConstraintInit<O extends { [P in keyof O]: Constraint | ObjectConstraint.PropertyDescriptor<Constraint, boolean> }> = {
-  [P in keyof O]: O[P] extends Constraint ? ObjectConstraint.RequiredPropertyDescriptor<O[P]> : O[P] extends ObjectConstraint.PropertyDescriptor<Constraint, boolean> ? O[P] : never
-};
-export const $object = <O extends { [P in keyof O]: Constraint | ObjectConstraint.PropertyDescriptor<Constraint, boolean> }>(obj: O): ObjectConstraint<CorrectedObjectConstraintInit<O>> => {
-  if (Array.isArray(obj)) {
-    const correctedArray = obj.map((value: Constraint | ObjectConstraint.PropertyDescriptor<Constraint, boolean>) =>
-      Constraint.isConstraint(value) ? $required(value) : value
-    ) as ObjectConstraint.PropertyDescriptor<Constraint, boolean>[] & CorrectedObjectConstraintInit<O>;
-    return new ObjectConstraint(correctedArray);
-  } else {
-    const correctedObj: { [P in keyof O]: Constraint | ObjectConstraint.PropertyDescriptor<Constraint, boolean> } = { ...obj };
-    const entries = Object.entries(obj) as [keyof O, O[keyof O]][];
-    for (const [property, descriptorOrConstraint] of entries) {
-      const descriptor = Constraint.isConstraint(descriptorOrConstraint) ? $required(descriptorOrConstraint) : descriptorOrConstraint as ObjectConstraint.PropertyDescriptor<Constraint, boolean>;
-      correctedObj[property] = descriptor;
-    }
-    return new ObjectConstraint(correctedObj as CorrectedObjectConstraintInit<O>);
+type DescriptorOrConstraint = ConstraintWithEntries.PropertyDescriptor<Constraint, boolean> | Constraint;
+
+export class ObjectConstraint<O extends { [P in keyof O]: ConstraintWithEntries.PropertyDescriptor<Constraint, boolean> }> extends ConstraintWithEntries<O> {
+  readonly constraintName = 'object';
+  typeExpression(): string {
+    const keys = Object.keys(this.obj) as (keyof O)[];
+    const entries = Object.entries(this.obj) as [keyof O, O[keyof O]][];
+    return keys.length === 0 ?
+      '{}' :
+      `{ ${entries.map(
+        ([key, descriptor]) => `"${key}"${descriptor instanceof ConstraintWithEntries.OptionalPropertyDescriptor ? '?' : ''}: ${descriptor.value.typeExpression()};`
+      ).join(' ')} }`;
   }
+}
+
+type CorrectedObjectConstraintInit<O extends { [P in keyof O]: DescriptorOrConstraint }> = {
+  [P in keyof O]: O[P] extends Constraint ? ConstraintWithEntries.RequiredPropertyDescriptor<O[P]> : O[P] extends ConstraintWithEntries.PropertyDescriptor<Constraint, boolean> ? O[P] : never
+};
+export const $object = <O extends { [P in keyof O]: DescriptorOrConstraint }>(obj: O): ObjectConstraint<CorrectedObjectConstraintInit<O>> => {
+  const correctedObj: { [P in keyof O]: DescriptorOrConstraint } = { ...obj };
+  const entries = Object.entries(obj) as [keyof O, O[keyof O]][];
+  for (const [property, descriptorOrConstraint] of entries) {
+    const descriptor = Constraint.isConstraint(descriptorOrConstraint) ? $required(descriptorOrConstraint) : descriptorOrConstraint as ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>;
+    correctedObj[property] = descriptor;
+  }
+  return new ObjectConstraint(correctedObj as CorrectedObjectConstraintInit<O>);
+}
+
+export class TupleConstraint<O extends { [P in keyof O]: ConstraintWithEntries.PropertyDescriptor<Constraint, boolean> }>
+  extends ConstraintWithEntries<O & readonly ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>[]>
+{
+  readonly constraintName = 'tuple';
+  constructor(...tuple: O & readonly ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>[]) { super(tuple); }
+  typeExpression(): string {
+    return `[${this.obj.map(
+      (descriptor: ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>) =>
+        descriptor instanceof ObjectConstraint.OptionalPropertyDescriptor ? `${descriptor.value.typeExpression(true)}?` : descriptor.value.typeExpression()).join(', ')
+      }]`;
+  }
+}
+
+export const $tuple = <O extends { [P in keyof O]: DescriptorOrConstraint }>(...tuple: O & readonly DescriptorOrConstraint[]): TupleConstraint<CorrectedObjectConstraintInit<O>> => {
+  const correctedTuple = tuple.map((value: DescriptorOrConstraint) =>
+    Constraint.isConstraint(value) ? $required(value) : value
+  ) as CorrectedObjectConstraintInit<O> & ConstraintWithEntries.PropertyDescriptor<Constraint, boolean>[];
+  return new TupleConstraint(...correctedTuple) as unknown as TupleConstraint<CorrectedObjectConstraintInit<O>>;
 }
 
 export class ArrayConstraint<C extends Constraint> extends AbstractConstraint {

@@ -1,5 +1,5 @@
 import CheckerError from "../src/CheckerError";
-import Constraint, { $array, $boolean, $const, $false, $never, $null, $number, $object, $string, $true, $undefined, $union, $optional } from "../src/Constraint";
+import Constraint, { $array, $boolean, $const, $false, $never, $null, $number, $object, $string, $true, $undefined, $union, $optional, $tuple } from "../src/Constraint";
 import * as helpers from './helpers';
 
 describe('Constraint', () => {
@@ -17,11 +17,11 @@ describe('Constraint', () => {
       ['string | number', $union($string, $number)],
       ['number[]', $array($number)],
       ['(number | boolean)[]', $array($union($number, $boolean))],
-      ['[boolean, number, string, null, undefined]', $object(
-        [$boolean, $number, $string, $null, $undefined]
+      ['[boolean, number, string, null, undefined]', $tuple(
+        $boolean, $number, $string, $null, $undefined
       )],
-      ['[boolean, number, (string | undefined)?, (null | undefined)?]', $object(
-        [$boolean, $number, $optional($string), $optional($null)]
+      ['[boolean, number, (string | undefined)?, (null | undefined)?]', $tuple(
+        $boolean, $number, $optional($string), $optional($null)
       )],
       ['{}', $object({})],
       ['{ "a": number; "b"?: number | undefined; "c": (string | true)[]; "d"?: (string | true)[] | undefined; }', $object({

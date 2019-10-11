@@ -1,6 +1,5 @@
 import prettyFormat from 'pretty-format';
 import { CheckerError1, CheckerError2, ErrorWithChildren } from './CheckerError';
-import ExpectedType from './ExpectedType';
 
 interface Constraint {
   readonly typeName: 'constraint';
@@ -27,7 +26,7 @@ abstract class AbstractConstraint implements Constraint {
   abstract check(value: unknown): void;
   abstract checkOnlySurface(value: unknown): void;
   abstract getChildByProperty(property: string | number | symbol): Constraint | null;
-  isCompatible(value: unknown): value is ExpectedType<this> {
+  isCompatible(value: unknown) {
     try {
       this.check(value);
       return true;
